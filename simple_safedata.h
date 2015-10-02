@@ -119,20 +119,23 @@
    name.constraint = &sfd_dummy;
 
 #define sfd_var_read(name) \
-   (name.flags & SFD_FL_INITD? \
-      (name.flags & SFD_FL_READ? \
+   (name.flags & SFD_FL_READ? \
+      (name.flags & SFD_FL_INITD? \
          (name.val)\
       :\
-          0* sfd_printf("Read not permitted, file : %s, line : %d\n", __FILE__, __LINE__)\
+          0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
          +0* sfd_force_exit()\
       )\
    :\
-       0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+       0* sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +0* sfd_force_exit()\
    )
 
 #define sfd_var_write(name, in_val) \
-   (name.flags&SFD_FL_CON? sfd_enforce_con(name) : 0)\
+   (in_val < name.lo_bnd? \
+      0*sfd_printf("Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
+   +0* (in_val > name.up_bnd? \
+         0*sfd_printf("Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +0*   (name.flags & SFD_FL_WRITE? \
             (name.val = in_val)\
             +0* (name.flags |= SFD_FL_INITD)\
@@ -140,7 +143,7 @@
              0* sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
             +0* sfd_force_exit()\
          )\
-   +0* (name.flags&SFD_FL_CON? sfd_enforce_con(name) : 0)
+   +0* (name.flags & SFD_FL_CON? sfd_enforce_con(name) : 0)
 
 #define sfd_flag_get(name) \
    (name.flags)
@@ -233,25 +236,30 @@
    bitmap_init(&name.init_map, bmp_start, NULL, in_size, 0);
 
 #define sfd_arr_read(name, indx) \
-   (name.flags&SFD_FL_INITD? \
-      (indx < name.size? \
-         (name.start[indx])\
-      :\
-          0* sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
-         +0* sfd_force_exit()\
-      )\
-   :\
-       0* bitmap_read(&name.init_map, indx, &name.temp, 0)\
-      +  (name.temp? \
+   (name.flags & SFD_FL_READ? \
+      (name.flags & SFD_FL_INITD? \
+         (indx < name.size? \
             (name.start[indx])\
          :\
-             0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+             0* sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
             +0* sfd_force_exit()\
          )\
+      :\
+          0* bitmap_read(&name.init_map, indx, &name.temp, 0)\
+         +  (name.temp? \
+               (name.start[indx])\
+            :\
+                0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +0* sfd_force_exit()\
+            )\
+      )\
+   :\
+       0* sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +0* sfd_force_exit()\
    )
 
 #define sfd_arr_write(name, indx, in_val) \
-   (name.flags&SFD_FL_WRITE? \
+   (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
              (name.start[indx] = in_val)\
          +0* bitmap_write(&name.init_map, indx, 1, 0)\
@@ -264,10 +272,14 @@
       +0* sfd_force_exit()\
    )
 
-#define sfd_arr_wipe(name)\
-       (memset(name.start, name.size, sizeof(*name.start)))\
-   +0* (name.flags |= SFD_FL_INITD)
-
+#define sfd_arr_wipe(name) \
+   (name.flags & SFD_FL_WRITE? \
+          (sfd_memset(name.start, 0, name.size))\
+      +0* (name.flags |= SFD_FL_INITD)\
+   :\
+       0* sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +0* sfd_force_exit()\
+   )
 
 
 static int sfd_force_exit() {
@@ -277,6 +289,11 @@ static int sfd_force_exit() {
 
 static int sfd_dummy() {
    return 1;
+}
+
+static int sfd_memset(void *str, int c, size_t n) {
+   memset(str, c, n);
+   return 0;
 }
 
 #endif
