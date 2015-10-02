@@ -1,7 +1,7 @@
 /* simple safe data structure library
  * Author : darrenldl <dldldev@yahoo.com>
  * 
- * Version : 0.01
+ * Version : 0.01 - Testing
  * 
  * Note:
  *    The data structures themselves are not threadsafe
@@ -143,7 +143,7 @@
              0* sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
             +0* sfd_force_exit()\
          )\
-   +0* (name.flags & SFD_FL_CON? sfd_enforce_con(name) : 0)
+   +0* (name.flags & SFD_FL_CON? sfd_var_enforce_con(name) : 0)
 
 #define sfd_flag_get(name) \
    (name.flags)
@@ -169,15 +169,14 @@
 #define sfd_var_set_up_bnd(name, in_val) \
    (name.up_bnd = in_val)
 
-#define sfd_add_con(name, type, arg_name, expr) \
-   int constraint##_sfd_var_##name (type arg_name) \
-   {\
+#define sfd_var_add_con(name, type, arg_name, expr) \
+   int constraint##_sfd_var_##name (type arg_name) {\
       return (expr);\
    }\
    name.constraint = &constraint##_sfd_var_##name;\
    name.con_expr = #expr;
 
-#define sfd_enforce_con(name) \
+#define sfd_var_enforce_con(name) \
    (name.constraint(name.val)? \
       0\
    :\
@@ -193,13 +192,16 @@
       uint_fast32_t size;  \
       simple_bitmap init_map;\
       map_block temp;\
+      int (*constraint) ();\
+      char* con_expr;      \
    } name;\
    map_block name##_sfd_raw_init_map [get_bitmap_map_block_number(in_size)];\
    type name##_sfd_arr [in_size];\
    name.flags = SFD_FL_READ | SFD_FL_WRITE;\
    name.start = name##_sfd_arr;\
    name.size = in_size;\
-   bitmap_init(&name.init_map, name##_sfd_raw_init_map, NULL, in_size, 0);
+   bitmap_init(&name.init_map, name##_sfd_raw_init_map, NULL, in_size, 0);\
+   name.constraint = &sfd_dummy;
 
 #define sfd_arr_dec_dyn(type, name, in_size)\
    struct {\
@@ -208,6 +210,8 @@
       uint_fast32_t size;  \
       simple_bitmap init_map;\
       map_block temp;\
+      int (*constraint) ();\
+      char* con_expr;      \
    } name;\
    map_block* name##_sfd_raw_init_map = (map_block*) malloc(sizeof(map_block) * get_bitmap_map_block_number(in_size));\
    name.start = (type*) malloc(sizeof(type) * in_size);\
@@ -215,11 +219,13 @@
       sfd_printf("sfd_arr_dec_dyn : malloc failed : file : %s, line : %d\n", __FILE__, __LINE__);\
       name.flags = 0;\
       name.size = 0;\
+      name.constraint = &sfd_dummy;\
    }\
    else {\
       name.flags = SFD_FL_READ | SFD_FL_WRITE;\
       name.size = in_size;\
       bitmap_init(&name.init_map, name##_sfd_raw_init_map, NULL, in_size, 0);\
+      name.constraint = &sfd_dummy;\
    }
 
 #define sfd_arr_dec_man(type, name, in_size, bmp_start, arr_start)\
@@ -229,11 +235,14 @@
       uint_fast32_t size;  \
       simple_bitmap init_map;\
       map_block temp;\
+      int (*constraint) ();\
+      char* con_expr;      \
    } name;\
    name.flags = SFD_FL_READ | SFD_FL_WRITE;\
    name.start = arr_start;\
    name.size = in_size;\
-   bitmap_init(&name.init_map, bmp_start, NULL, in_size, 0);
+   bitmap_init(&name.init_map, bmp_start, NULL, in_size, 0);\
+   name.constraint = &sfd_dummy;
 
 #define sfd_arr_read(name, indx) \
    (name.flags & SFD_FL_READ? \
@@ -263,6 +272,7 @@
       (indx < name.size? \
              (name.start[indx] = in_val)\
          +0* bitmap_write(&name.init_map, indx, 1, 0)\
+         +0* sfd_arr_enforce_con(name)\
       :\
           0* sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +0* sfd_force_exit()\
@@ -274,13 +284,45 @@
 
 #define sfd_arr_wipe(name) \
    (name.flags & SFD_FL_WRITE? \
-          (sfd_memset(name.start, 0, name.size))\
+          (sfd_memset(name.start, 0, sizeof(name.start[0]) * name.size))\
       +0* (name.flags |= SFD_FL_INITD)\
    :\
        0* sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +0* sfd_force_exit()\
    )
 
+#define sfd_arr_enforce_con(name) \
+   (name.constraint()? \
+      0\
+   :\
+       0* sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +0* sfd_printf("Constraint in effect : %s\n", name.con_expr)\
+      +0* sfd_force_exit()\
+   )
+
+#define sfd_arr_add_con_ele(name, type, arg_name, expr) \
+   int constraint##_sfd_arr_##name (type arg_name) {\
+      return (expr);\
+   }\
+   int con_loop##_sfd_arr_##name () {\
+      int i = 0;\
+      for (i = 0; i < name.size; i++) {\
+         if ( ! constraint##_sfd_arr_##name(name.start[i])) {\
+            return 0;\
+         }\
+      }\
+      return 1;\
+   }\
+   name.constraint = &con_loop##_sfd_arr_##name;\
+   name.con_expr = #expr;
+   
+
+#define sfd_arr_add_con_arr(name, func) \
+   int constraint##_sfd_var_##name () {\
+      return func(name.start);\
+   }\
+   name.constraint = &constraint##_sfd_var_##name;\
+   name.con_expr = #func;
 
 static int sfd_force_exit() {
    exit(0);
