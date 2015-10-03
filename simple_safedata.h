@@ -316,7 +316,6 @@
    name.constraint = &con_loop##_sfd_arr_##name;\
    name.con_expr = #expr;
    
-
 #define sfd_arr_add_con_arr(name, func) \
    int constraint##_sfd_var_##name () {\
       return func(name.start);\
