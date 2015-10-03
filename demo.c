@@ -49,7 +49,7 @@ int main () {
       // then we undo both
       sfd_flag_enable(k, SFD_FL_READ | SFD_FL_WRITE);
       
-      // one may add constraint to the variable, which is enforced before and after each sfd write
+      // one may add constraint to the variable, which is enforced after each sfd write
       sfd_var_add_con(k, int, x, x % 2 == 0);    // here we require k to always be an even number
       
       // now we write an odd number
@@ -57,9 +57,15 @@ int main () {
       sfd_var_write(k, 11);
    
    // test case for array
-      // sfd array has all of above, except for bound checking
-      // also sfd array has two types of constraints as seen below
+      // sfd array has all of above, except for bound checking,
+      // but similar mechanism can be achieve by constraints
+      
+      // the two types of constraints are shown below
       // note that sfd array tracks individual initialisation of element using a bitmap
+      
+      // basic bound checking
+      // following will fail since out of bound
+      sfd_arr_read(arr0, 100);
       
       // we try to read an uninitialised int
       // following will terminate the program
@@ -68,7 +74,7 @@ int main () {
       // we initialise an int
       sfd_arr_write(arr0, 19, 404);
       
-      // and of course we can read from it now
+      // and of course we can read from the initialised int now
       printf("arr0[19] : %d\n", sfd_arr_read(arr0, 19));
       
       // and of course other unitialised ones will not work
@@ -82,7 +88,8 @@ int main () {
       sfd_arr_read(arr0, 99);
       
       // now we add a constraint that applies to all elements within the array
-      sfd_arr_add_con_ele(arr0, int, x, x % 2 == 0);
+      // similarly, constraint is enforced after write
+      sfd_arr_add_con_ele(arr0, int, x, x % 2 == 0);  // all elements must be 0 or even number
       
       // following will fail since an odd number is written into the array
       sfd_arr_write(arr0, 1, 3);
