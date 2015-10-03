@@ -38,6 +38,8 @@
 
 //#define SIMPLE_SAFEDATA_SILENT
 
+#define SIMPLE_SAFEDATA_DISABLE
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -51,6 +53,32 @@
 #include "simple_bitmap.h"
 
 #define safd_max(a, b) ((a) > (b) ? (a) : (b))
+
+#ifdef SIMPLE_SAFEDATA_DISABLE
+   #define sfd_var_dec(type, name)     type name
+   #define sfd_var_read(name)          name
+   #define sfd_var_write(name, in_val) (name = in_val)
+   #define sfd_flag_get(...)        0
+   #define sfd_flag_set(...)        0
+   #define sfd_flag_enable(...)     0
+   #define sfd_flag_disable(...)    0
+   #define sfd_var_get_lo_bnd(...)  0
+   #define sfd_var_get_up_bnd(...)  0
+   #define sfd_var_set_lo_bnd(...)  0
+   #define sfd_var_set_up_bnd(...)  0
+   #define sfd_var_add_con(...)     0
+   #define sfd_var_enforce_con(...) 1
+   #define sfd_arr_dec_sta(type, name, size)                      type name[size]
+   #define sfd_arr_dec_dyn(type, name, size)                      type* name = (type*) malloc(sizeof(type) * size)
+   #define sfd_arr_dec_man(type, name, size, start_bmap, start)   type* name = start
+   #define sfd_arr_read(name, indx)                               name[indx]
+   #define sfd_arr_write(name, indx, in_val)                      (name[indx] = in_val)
+   #define sfd_arr_wipe(...)        0
+   #define sfd_arr_enforce_con(...) 1
+   #define sfd_arr_add_con_ele(...) 0
+   #define sfd_arr_add_con_arr(...) 0
+   #define sfd_arr_get_size(...)    0
+#else
 
 #ifdef SIMPLE_SAFEDATA_SILENT
    #define sfd_printf(...) 0
@@ -323,6 +351,9 @@
    name.constraint = &constraint##_sfd_var_##name;\
    name.con_expr = #func;
 
+#define sfd_arr_get_size(name) \
+   (name.size)
+
 static int sfd_force_exit() {
    exit(0);
    return 0;
@@ -336,5 +367,7 @@ static int sfd_memset(void *str, int c, size_t n) {
    memset(str, c, n);
    return 0;
 }
+
+#endif
 
 #endif
