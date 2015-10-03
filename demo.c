@@ -96,9 +96,9 @@ int main () {
       
       // we can also add a array-wise constraint
       // note that this particular declaration must have the appropriate type for arguments
-      int all_zero(int* arr) {
+      int all_zero(int* arr, int size) {
          int i;
-         for (i = 0; i < 100; i++) {
+         for (i = 0; i < size; i++) {
             if (arr[i]) {
                return 0;
             }

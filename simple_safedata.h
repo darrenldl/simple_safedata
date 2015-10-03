@@ -346,7 +346,7 @@
    
 #define sfd_arr_add_con_arr(name, func) \
    int constraint##_sfd_var_##name () {\
-      return func(name.start);\
+      return func(name.start, name.size);\
    }\
    name.constraint = &constraint##_sfd_var_##name;\
    name.con_expr = #func;
