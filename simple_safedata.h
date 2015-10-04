@@ -219,7 +219,7 @@
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
-      map_block temp;\
+      map_block temp;      \
       int (*constraint) ();\
       char* con_expr;      \
    } name;\
@@ -237,7 +237,7 @@
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
-      map_block temp;\
+      map_block temp;      \
       int (*constraint) ();\
       char* con_expr;      \
    } name;\
@@ -262,7 +262,7 @@
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
-      map_block temp;\
+      map_block temp;      \
       int (*constraint) ();\
       char* con_expr;      \
    } name;\
