@@ -797,8 +797,8 @@ int bitmap_shift (simple_bitmap* map, bit_index offset, char direction, map_bloc
             *(map->end) |= temp;
          }
          else {
-            *(map->end-1) |= temp >> MAP_BLOCK_BIT - (bits_to_shift - get_bitmap_excess_bits(map->length));
-            *(map->end) |= temp << bits_to_shift - get_bitmap_excess_bits(map->length);
+            *(map->end-1) |= temp >> (MAP_BLOCK_BIT - (bits_to_shift - get_bitmap_excess_bits(map->length)));
+            *(map->end) |= temp << (bits_to_shift - get_bitmap_excess_bits(map->length));
          }
       }
    }
@@ -1312,7 +1312,6 @@ int bitmap_write (simple_bitmap* map, bit_index index, map_block input_value, un
       return CORRUPTED_DATA;
    }
    if (map->base + get_bitmap_map_block_index(map->length-1) != map->end) {
-      printf("t %d, %d\n", map->end - map->end, map->length-1);
       printf("bitmap_write : length is inconsistent with base and end\n");
       return CORRUPTED_DATA;
    }
@@ -2631,7 +2630,7 @@ int bitmap_shrink (simple_bitmap* map, map_block* end, uint_fast32_t size_in_bit
       }
       #endif
       old_end = map->end;
-      old_length = map->length;
+      //old_length = map->length;
       map->end = map->base + get_bitmap_map_block_index(size_in_bits-1);
       map->length = size_in_bits;
    }
@@ -2647,7 +2646,7 @@ int bitmap_shrink (simple_bitmap* map, map_block* end, uint_fast32_t size_in_bit
       }
       #endif
       old_end = map->end;
-      old_length = map->length;
+      //old_length = map->length;
       map->end = end;
       map->length = (end - map->base + 1) * MAP_BLOCK_BIT;
    }
@@ -2688,9 +2687,9 @@ int bitmap_show (simple_bitmap* map) {
    
    printf("map->base : %p\n", map->base);
    printf("map->end  : %p\n", map->end);
-   printf("map->length : %u\n", map->length);
-   printf("map->number_of_zeros : %u\n", map->number_of_zeros);
-   printf("map->number_of_ones  : %u\n", map->number_of_ones);
+   printf("map->length : %d\n", (int) map->length);
+   printf("map->number_of_zeros : %d\n", (int) map->number_of_zeros);
+   printf("map->number_of_ones  : %d\n", (int) map->number_of_ones);
    
    #ifdef SIMPLE_BITMAP_META_DATA_SECURITY
    offsets = map->offsets;
@@ -2773,8 +2772,8 @@ int bitmap_cont_group_show (bitmap_cont_group* grp) {
    printf("####################\n");
    
    printf("grp->bit_type : %x\n", grp->bit_type);
-   printf("grp->start  : %u\n", grp->start);
-   printf("grp->length : %u\n", grp->length);
+   printf("grp->start  : %d\n", (int) grp->start);
+   printf("grp->length : %d\n", (int) grp->length);
    
    printf("####################\n");
    
