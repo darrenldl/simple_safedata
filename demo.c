@@ -8,6 +8,27 @@
  *    The faulty lines have a line of comment starting with "following ..." above
  */
 
+// defining the constraints outside of functions
+// as constraints are functions themselves
+sfd_var_def_con(even_num, int, x, x % 2 == 0);  // constraint for a variable
+
+sfd_arr_def_con_ele(even_num, int, x, x % 2 == 0); // constraint for array elements
+
+      
+// we can also add a array-wise constraint, which will be added later, see below
+// note that this particular declaration must have the appropriate type for arguments
+int all_zero_func(int* arr, int size) {
+   int i;
+   for (i = 0; i < size; i++) {
+      if (arr[i]) {
+         return 0;
+      }
+   }
+   return 1;
+}
+
+sfd_arr_def_con_arr(all_zero, int, all_zero_func); // construct a constraint using the function
+
 int main () {
    // declare a sfd variable
    sfd_var_dec(int, k);    // function same as int k, but tied to function suite provided in sfd
@@ -50,7 +71,7 @@ int main () {
       sfd_flag_enable(k, SFD_FL_READ | SFD_FL_WRITE);
       
       // one may add constraint to the variable, which is enforced after each sfd write
-      sfd_var_add_con(k, int, x, x % 2 == 0);    // here we require k to always be an even number
+      sfd_var_add_con(k, even_num);    // here we require k to always be an even number
       
       // now we write an odd number
       // following will obviously terminate
@@ -89,27 +110,18 @@ int main () {
       
       // now we add a constraint that applies to all elements within the array
       // similarly, constraint is enforced after write
-      sfd_arr_add_con_ele(arr0, int, x, x % 2 == 0);  // all elements must be 0 or even number
+      sfd_arr_add_con_ele(arr0, even_num);  // all elements must be 0 or even number
       
       // following will fail since an odd number is written into the array
       sfd_arr_write(arr0, 1, 3);
       
-      // we can also add a array-wise constraint
-      // note that this particular declaration must have the appropriate type for arguments
-      int all_zero(int* arr, int size) {
-         int i;
-         for (i = 0; i < size; i++) {
-            if (arr[i]) {
-               return 0;
-            }
-         }
-         return 1;
-      }
-      
+      // now add the all_zero constraint to the array
       sfd_arr_add_con_arr(arr0, all_zero);
       
       // following will fail since not all are zero
-      sfd_arr_write(arr0, 40, 0);
+      sfd_arr_write(arr0, 40, 2);
       
+      
+      printf("sfd demo completed execution successfully!\n");
    return 0;
 }

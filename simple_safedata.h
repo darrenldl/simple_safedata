@@ -111,6 +111,7 @@
       type lo_bnd;         \
       int (*constraint) (type);\
       char* con_in_effect; \
+      char* con_expr;      \
    } name;\
    name.flags = SFD_FL_READ | SFD_FL_WRITE | SFD_FL_CON;\
    name.lo_bnd =\
@@ -205,18 +206,21 @@
 #define sfd_var_def_con(con_name, type, arg_name, expr)\
    int sfd_con_##con_name##_var (type arg_name) {\
       return (expr);\
-   }
+   }\
+   char* sfd_con_##con_name##_var_expr = #expr;
 
 #define sfd_var_add_con(name, con_name) \
    name.constraint = &sfd_con_##con_name##_var;\
-   name.con_in_effect = #con_name;
+   name.con_in_effect = #con_name;\
+   name.con_expr = sfd_con_##con_name##_var_expr;
 
 #define sfd_var_enforce_con(name) \
    (name.constraint(name.val)? \
       0\
    :\
        0* sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
-      +0* sfd_printf("Constraint in effect : %s\n", name.con_in_effect)\
+      +0* sfd_printf("  Constraint in effect  : %s\n", name.con_in_effect)\
+      +0* sfd_printf("  Constraint expression : %s\n", name.con_expr)\
       +0* sfd_force_exit()\
    )
 
@@ -229,6 +233,7 @@
       map_block temp;      \
       int (*constraint) (int, ...);\
       char* con_in_effect;      \
+      char* con_expr;      \
    } name;\
    map_block name##_sfd_raw_init_map [get_bitmap_map_block_number(in_size)];\
    type name##_sfd_arr [in_size];\
@@ -247,6 +252,7 @@
       map_block temp;      \
       int (*constraint) (int, ...);\
       char* con_in_effect;      \
+      char* con_expr;      \
    } name;\
    map_block* name##_sfd_raw_init_map = (map_block*) malloc(sizeof(map_block) * get_bitmap_map_block_number(in_size));\
    name.start = (type*) malloc(sizeof(type) * in_size);\
@@ -272,6 +278,7 @@
       map_block temp;      \
       int (*constraint) (int, ...);\
       char* con_in_effect;      \
+      char* con_expr;      \
    } name;\
    name.flags = SFD_FL_READ | SFD_FL_WRITE | SFD_FL_CON;\
    name.start = arr_start;\
@@ -281,21 +288,21 @@
 
 #define sfd_arr_read(name, indx) \
    (name.flags & SFD_FL_READ? \
-      (name.flags & SFD_FL_INITD? \
-         (indx < name.size? \
+      (indx < name.size? \
+         (name.flags & SFD_FL_INITD? \
             (name.start[indx])\
          :\
-             0* sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
-            +0* sfd_force_exit()\
+             0* bitmap_read(&name.init_map, indx, &name.temp, 0)\
+            +  (name.temp? \
+                  (name.start[indx])\
+               :\
+                   0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+                  +0* sfd_force_exit()\
+               )\
          )\
       :\
-          0* bitmap_read(&name.init_map, indx, &name.temp, 0)\
-         +  (name.temp? \
-               (name.start[indx])\
-            :\
-                0* sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
-               +0* sfd_force_exit()\
-            )\
+          0* sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +0* sfd_force_exit()\
       )\
    :\
        0* sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
@@ -331,7 +338,8 @@
       0\
    :\
        0* sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
-      +0* sfd_printf("Constraint in effect : %s\n", name.con_in_effect)\
+      +0* sfd_printf("  Constraint in effect  : %s\n", name.con_in_effect)\
+      +0* sfd_printf("  Constraint expression : %s\n", name.con_expr)\
       +0* sfd_force_exit()\
    )
 
@@ -351,7 +359,8 @@
          }\
       }\
       return 1;\
-   }
+   }\
+   char* sfd_con_##con_name##_arr_expr = #expr;
 
 #define sfd_arr_def_con_arr(con_name, type, func_name) \
    int sfd_con_##con_name##_array_wise (int N, ...) {\
@@ -359,16 +368,19 @@
       va_start(args, N);\
       type* start = va_arg(args, type*);\
       int size = va_arg(args, uint_fast32_t);\
-      return func(start, size);\
-   }
+      return func_name(start, size);\
+   }\
+   char* sfd_con_##con_name##_arr_expr = #func_name;
 
 #define sfd_arr_add_con_ele(name, con_name) \
    name.constraint = &sfd_con_##con_name##_arr_loop;\
-   name.con_in_effect = #con_name;
+   name.con_in_effect = #con_name;\
+   name.con_expr = sfd_con_##con_name##_arr_expr;
 
 #define sfd_arr_add_con_arr(name, con_name) \
    name.constraint = &sfd_con_##con_name##_array_wise;\
-   name.con_in_effect = #con_name;
+   name.con_in_effect = #con_name;\
+   name.con_expr = sfd_con_##con_name##_arr_expr;
 
 #define sfd_arr_get_size(name) \
    (name.size)
