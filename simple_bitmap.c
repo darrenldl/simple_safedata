@@ -63,7 +63,7 @@
             } while (0)
 
 int bitmap_init (simple_bitmap* map, map_block* base, map_block* end, uint_fast32_t size_in_bits, map_block default_value) {
-   int ret_temp;
+   //int ret_temp;
    
    #ifdef SIMPLE_BITMAP_META_DATA_SECURITY
    uint_least8_t offsets;
@@ -449,7 +449,7 @@ int bitmap_zero (simple_bitmap* map) {
 int bitmap_one (simple_bitmap* map) {
    map_block mask;
    
-   map_block buf;
+   //map_block buf;
    
    map_block* cur;
    
@@ -517,9 +517,9 @@ int bitmap_shift (simple_bitmap* map, bit_index offset, char direction, map_bloc
    map_block* start;
    map_block* end;
    
-   map_block* end2;
+   //map_block* end2;
    
-   map_block mask_clear;
+   //map_block mask_clear;
    
    map_block temp;
    
@@ -527,7 +527,7 @@ int bitmap_shift (simple_bitmap* map, bit_index offset, char direction, map_bloc
    
    unsigned char bits_to_shift;
    
-   unsigned char count;
+   //unsigned char count;
    
    char shrink_direction;
    
@@ -537,7 +537,7 @@ int bitmap_shift (simple_bitmap* map, bit_index offset, char direction, map_bloc
    
    map_block* cur;
    
-   map_block* temp_end;
+   //map_block* temp_end;
    
    bitmap_meta_decrypt(map);
    
@@ -876,11 +876,11 @@ int bitmap_and (simple_bitmap* map1, simple_bitmap* map2, simple_bitmap* ret_map
    map_block* cur2;
    map_block* cur_ret;
    
-   unsigned char count;
+   //unsigned char count;
    
-   map_block mask;
+   //map_block mask;
    
-   bit_index temp;
+   //bit_index temp;
    
    bitmap_meta_decrypt(map1);
    bitmap_meta_decrypt(map2);
@@ -990,11 +990,11 @@ int bitmap_or (simple_bitmap* map1, simple_bitmap* map2, simple_bitmap* ret_map,
    map_block* cur2;
    map_block* cur_ret;
    
-   unsigned char count;
+   //unsigned char count;
    
-   map_block mask;
+   //map_block mask;
    
-   bit_index temp;
+   //bit_index temp;
    
    bitmap_meta_decrypt(map1);
    bitmap_meta_decrypt(map2);
@@ -1104,11 +1104,11 @@ int bitmap_xor (simple_bitmap* map1, simple_bitmap* map2, simple_bitmap* ret_map
    map_block* cur2;
    map_block* cur_ret;
    
-   unsigned char count;
+   //unsigned char count;
    
-   map_block mask;
+   //map_block mask;
    
-   bit_index temp;
+   //bit_index temp;
    
    bitmap_meta_decrypt(map1);
    bitmap_meta_decrypt(map2);
@@ -1214,7 +1214,7 @@ int bitmap_xor (simple_bitmap* map1, simple_bitmap* map2, simple_bitmap* ret_map
 }
 
 int bitmap_read (simple_bitmap* map, bit_index index, map_block* result, unsigned char no_auto_crypt) {
-   map_block* cur;
+   //map_block* cur;
    
    uint_fast32_t block_index;
    unsigned char bit_indx;
@@ -1279,7 +1279,7 @@ int bitmap_read (simple_bitmap* map, bit_index index, map_block* result, unsigne
 }
 
 int bitmap_write (simple_bitmap* map, bit_index index, map_block input_value, unsigned char no_auto_crypt) {
-   map_block* cur;
+   //map_block* cur;
    
    uint_fast32_t block_index;
    unsigned char bit_indx;
@@ -2580,7 +2580,7 @@ int bitmap_shrink (simple_bitmap* map, map_block* end, uint_fast32_t size_in_bit
    
    map_block* old_end;
    
-   bit_index old_length;
+   //bit_index old_length;
    
    unsigned char count;
    
