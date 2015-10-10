@@ -388,16 +388,16 @@ static int sfd_force_exit() {
             +  (name.temp? \
                   (name.start[indx])\
                :\
-                   sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+                   sfd_printf("sfd : Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
                   +sfd_force_exit()\
                )\
          )\
       :\
-          sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    :\
-       sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+       sfd_printf("sfd : Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
    )\
    )
@@ -431,11 +431,11 @@ static int sfd_force_exit() {
             0\
          )\
       :\
-          sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    :\
-       sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+       sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
    )\
    )
@@ -469,11 +469,11 @@ static int sfd_force_exit() {
             0\
          )\
       :\
-          sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    :\
-       sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+       sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
    )\
    )
@@ -486,7 +486,7 @@ static int sfd_force_exit() {
        (sfd_memset(name.start, 0, sizeof(name.start[0]) * name.size))\
       +0* (name.flags |= SFD_FL_INITD)\
    :\
-       sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+       sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
    )\
    )
@@ -496,9 +496,9 @@ static int sfd_force_exit() {
    (name.constraint_ele(val)? \
       0\
    :\
-       sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
-      +sfd_printf("  Constraint in effect  : %s\n", name.con_in_effect_ele)\
-      +sfd_printf("  Constraint expression : %s\n", name.con_expr_ele)\
+       sfd_printf("sfd : Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_printf("        Constraint in effect  : %s\n", name.con_in_effect_ele)\
+      +sfd_printf("        Constraint expression : %s\n", name.con_expr_ele)\
       +sfd_force_exit()\
    )
 
@@ -507,9 +507,9 @@ static int sfd_force_exit() {
    (name.constraint_arr(0, name.start, name.size)? \
       0\
    :\
-       sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
-      +sfd_printf("  Constraint in effect  : %s\n", name.con_in_effect_arr)\
-      +sfd_printf("  Constraint expression : %s\n", name.con_expr_arr)\
+       sfd_printf("sfd : Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_printf("        Constraint in effect  : %s\n", name.con_in_effect_arr)\
+      +sfd_printf("        Constraint expression : %s\n", name.con_expr_arr)\
       +sfd_force_exit()\
    )
 
