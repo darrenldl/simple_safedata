@@ -1,7 +1,7 @@
 /* simple safe data structure library
  * Author : darrenldl <dldldev@yahoo.com>
  * 
- * Version : 0.01 - Testing
+ * Version : 0.02 - Testing
  * 
  * Note:
  *    The data structures themselves are not threadsafe
