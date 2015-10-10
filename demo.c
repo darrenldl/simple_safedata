@@ -110,7 +110,7 @@ int main () {
       
       // now we add a constraint that applies to all elements within the array
       // similarly, constraint is enforced after write
-      sfd_arr_add_con_ele(arr0, even_num);  // all elements must be 0 or even number
+      sfd_arr_add_con_ele(arr0, even_num, 1);  // all elements must be 0 or even number
       
       // following will fail since an odd number is written into the array
       sfd_arr_write(arr0, 1, 3);
@@ -122,6 +122,6 @@ int main () {
       sfd_arr_write(arr0, 40, 2);
       
       
-      printf("sfd demo completed execution successfully!\n");
+      printf("\n\nsfd demo completed execution successfully!\n");
    return 0;
 }

@@ -1,7 +1,7 @@
 /* simple safe data structure library
  * Author : darrenldl <dldldev@yahoo.com>
  * 
- * Version : 0.02 - Testing
+ * Version : 0.02
  * 
  * Note:
  *    The data structures themselves are not threadsafe
@@ -441,7 +441,7 @@ static int sfd_force_exit() {
          +0* bitmap_write(&name.init_map, indx, 1, 0)\
          +\
          (name.flags & SFD_FL_CON_ELE?\
-            (sfd_arr_enforce_con_ele ?\
+            (name.constraint_ele ?\
                sfd_arr_enforce_con_ele(name, name.start[indx])\
             :\
                0\
@@ -451,7 +451,7 @@ static int sfd_force_exit() {
          )\
          +\
          (name.flags & SFD_FL_CON_ARR?\
-            (sfd_arr_enforce_con_arr ?\
+            (name.constraint_arr ?\
                sfd_arr_enforce_con_arr(name)\
             :\
                0\
