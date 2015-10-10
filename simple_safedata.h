@@ -40,6 +40,9 @@
 
 //#define SIMPLE_SAFEDATA_DISABLE
 
+// customise your application return code upon SFD error here
+#define SFD_ERR_RET_CODE   1404
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -136,7 +139,7 @@
          double         : DBL_MIN,  \
          long double    : LDBL_MIN, \
          default :\
-             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+             sfd_printf("sfd : Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
             +sfd_force_exit()\
       )\
    ;\
@@ -157,14 +160,14 @@
          double         : DBL_MAX,  \
          long double    : LDBL_MAX, \
          default :\
-             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+             sfd_printf("sfd : Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
             +sfd_force_exit()\
       )\
    ;\
    name.constraint = 0;
 
 static int sfd_force_exit() {
-   exit(0);
+   exit(SFD_ERR_RET_CODE);
    return 0;
 }
 
@@ -176,11 +179,11 @@ static int sfd_force_exit() {
       (name.flags & SFD_FL_INITD? \
          (name.val)\
       :\
-          sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    :\
-       sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+       sfd_printf("sfd : Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
    )\
    )
@@ -190,14 +193,14 @@ static int sfd_force_exit() {
    (\
    name.ret_temp =\
     (in_val < name.lo_bnd? \
-      sfd_printf("Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
+      sfd_printf("sfd : Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +(in_val > name.up_bnd? \
-      sfd_printf("Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
+      sfd_printf("sfd : Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +  (name.flags & SFD_FL_WRITE? \
           (name.val = in_val)\
          +0* (name.flags |= SFD_FL_INITD)\
       :\
-          sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    +\
@@ -217,14 +220,14 @@ static int sfd_force_exit() {
    (\
    name.ret_temp =\
     (name.val + (in_val) < name.lo_bnd? \
-      sfd_printf("Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
+      sfd_printf("sfd : Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +(name.val + (in_val) > name.up_bnd? \
-      sfd_printf("Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
+      sfd_printf("sfd : Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +  (name.flags & SFD_FL_WRITE? \
           (name.val += in_val)\
          +0* (name.flags |= SFD_FL_INITD)\
       :\
-          sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+          sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
    +\
@@ -289,9 +292,9 @@ static int sfd_force_exit() {
    (name.constraint(name.val)? \
       0\
    :\
-       sfd_printf("Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
-      +sfd_printf("  Constraint in effect  : %s\n", name.con_in_effect)\
-      +sfd_printf("  Constraint expression : %s\n", name.con_expr)\
+       sfd_printf("sfd : Constraint failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_printf("        Constraint in effect  : %s\n", name.con_in_effect)\
+      +sfd_printf("        Constraint expression : %s\n", name.con_expr)\
       +sfd_force_exit()\
    )
 
@@ -339,7 +342,7 @@ static int sfd_force_exit() {
    map_block* name##_sfd_raw_init_map = (map_block*) malloc(sizeof(map_block) * get_bitmap_map_block_number(in_size));\
    name.start = (type*) malloc(sizeof(type) * in_size);\
    if (name##_sfd_raw_init_map == NULL || name.start == NULL) {\
-      sfd_printf("sfd_arr_dec_dyn : malloc failed : file : %s, line : %d\n", __FILE__, __LINE__);\
+      sfd_printf("sfd : sfd_arr_dec_dyn : malloc failed : file : %s, line : %d\n", __FILE__, __LINE__);\
       name.flags = 0;\
       name.size = 0;\
       sfd_force_exit();\
