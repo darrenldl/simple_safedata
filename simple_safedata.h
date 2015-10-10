@@ -106,9 +106,6 @@
 #define SFD_FL_CON_ELE  0x10  // for sfd arr
 #define SFD_FL_CON_ARR  0x20  // for sfd arr
 
-// safe data structure variable declaration
-int sfd_result_temp_int;
-
 // can NOT be used as expression
 #define sfd_var_dec(type, name) \
    struct {\
@@ -173,6 +170,7 @@ static int sfd_force_exit() {
 
 // CAN be used as expression
 #define sfd_var_read(name) \
+   (\
    name.ret_temp =\
    (name.flags & SFD_FL_READ? \
       (name.flags & SFD_FL_INITD? \
@@ -184,10 +182,12 @@ static int sfd_force_exit() {
    :\
        sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
+   )\
    )
 
 // CAN be used as expression
 #define sfd_var_write(name, in_val) \
+   (\
    name.ret_temp =\
     (in_val < name.lo_bnd? \
       sfd_printf("Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
@@ -208,10 +208,13 @@ static int sfd_force_exit() {
          0\
       )\
    :\
-   0)
+      0\
+   )\
+   )
 
 // CAN be used as expression
 #define sfd_var_incre(name, in_val) \
+   (\
    name.ret_temp =\
     (name.val + (in_val) < name.lo_bnd? \
       sfd_printf("Lower bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
@@ -233,6 +236,7 @@ static int sfd_force_exit() {
       )\
    :\
       0\
+   )\
    )
 
 // CAN be used as expression
@@ -373,6 +377,7 @@ static int sfd_force_exit() {
 
 // CAN be used as expression
 #define sfd_arr_read(name, indx) \
+   (\
    name.ret_temp =\
    (name.flags & SFD_FL_READ? \
       (indx < name.size? \
@@ -394,10 +399,12 @@ static int sfd_force_exit() {
    :\
        sfd_printf("Read not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
+   )\
    )
 
 // CAN be used as expression
 #define sfd_arr_write(name, indx, in_val) \
+   (\
    name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
@@ -430,10 +437,12 @@ static int sfd_force_exit() {
    :\
        sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
+   )\
    )
 
 // CAN be used as expression
 #define sfd_arr_incre(name, indx, in_val) \
+   (\
    name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
@@ -466,17 +475,20 @@ static int sfd_force_exit() {
    :\
        sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
+   )\
    )
 
 // CAN be used as expression
 #define sfd_arr_wipe(name) \
-   sfd_result_temp_int =\
+   (\
+   name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
        (sfd_memset(name.start, 0, sizeof(name.start[0]) * name.size))\
       +0* (name.flags |= SFD_FL_INITD)\
    :\
        sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
       +sfd_force_exit()\
+   )\
    )
 
 // CAN be used as expression
