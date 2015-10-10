@@ -57,14 +57,14 @@
 #define safd_max(a, b) ((a) > (b) ? (a) : (b))
 
 #ifdef SIMPLE_SAFEDATA_DISABLE
-   #define sfd_var_dec(type, name)     type name
-   #define sfd_var_read(name)          name
-   #define sfd_var_write(name, in_val) (name = in_val)
-   #define sfd_var_incre(name, in_val) (name += in_val)
    #define sfd_flag_get(...)        0
    #define sfd_flag_set(...)        0
    #define sfd_flag_enable(...)     0
    #define sfd_flag_disable(...)    0
+   #define sfd_var_dec(type, name)     type name
+   #define sfd_var_read(name)          name
+   #define sfd_var_write(name, in_val) (name = in_val)
+   #define sfd_var_incre(name, in_val) (name += in_val)
    #define sfd_var_get_lo_bnd(...)  0
    #define sfd_var_get_up_bnd(...)  0
    #define sfd_var_set_lo_bnd(...)  0
@@ -99,19 +99,20 @@
  *    0x4 - write allowed
  */
 
-#define SFD_FL_INITD 0x1
-#define SFD_FL_READ  0x2
-#define SFD_FL_WRITE 0x4
-#define SFD_FL_CON   0x8
-#define SFD_FL_CON_ELE 0x10
-#define SFD_FL_CON_ARR 0x20
+#define SFD_FL_INITD    0x1   // for all sfd data
+#define SFD_FL_READ     0x2   // for all sfd data
+#define SFD_FL_WRITE    0x4   // for all sfd data
+#define SFD_FL_CON      0x8   // for all sfd data
+#define SFD_FL_CON_ELE  0x10  // for sfd arr
+#define SFD_FL_CON_ARR  0x20  // for sfd arr
 
 // safe data structure variable declaration
 int sfd_result_temp_int;
 
+// can NOT be used as expression
 #define sfd_var_dec(type, name) \
    struct {\
-      uint_least8_t flags; \
+      uint_least16_t flags; \
       type val;            \
       type up_bnd;         \
       type lo_bnd;         \
@@ -136,7 +137,10 @@ int sfd_result_temp_int;
          unsigned long long : 0,    \
          float          : FLT_MIN,  \
          double         : DBL_MIN,  \
-         long double    : LDBL_MIN  \
+         long double    : LDBL_MIN, \
+         default :\
+             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
       )\
    ;\
    name.up_bnd =\
@@ -154,28 +158,20 @@ int sfd_result_temp_int;
          unsigned long long : ULLONG_MAX,\
          float          : FLT_MAX,  \
          double         : DBL_MAX,  \
-         long double    : LDBL_MAX  \
+         long double    : LDBL_MAX, \
+         default :\
+             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
       )\
    ;\
-   name.constraint =\
-      _Generic(name.val,\
-         signed char    : &sfd_dummy_con_var_signed_char,   \
-         unsigned char  : &sfd_dummy_con_var_unsigned_char, \
-         char           : &sfd_dummy_con_var_char,          \
-         short          : &sfd_dummy_con_var_short,         \
-         unsigned short : &sfd_dummy_con_var_unsigned_short,\
-         int            : &sfd_dummy_con_var_int,           \
-         unsigned int   : &sfd_dummy_con_var_unsigned_int,  \
-         long           : &sfd_dummy_con_var_long,          \
-         unsigned long  : &sfd_dummy_con_var_unsigned_long, \
-         long long      : &sfd_dummy_con_var_long_long,     \
-         unsigned long long : &sfd_dummy_con_var_unsigned_long_long,\
-         float          : &sfd_dummy_con_var_float,         \
-         double         : &sfd_dummy_con_var_double,        \
-         long double    : &sfd_dummy_con_var_long_double    \
-      )\
-   ;
+   name.constraint = 0;
 
+static int sfd_force_exit() {
+   exit(0);
+   return 0;
+}
+
+// CAN be used as expression
 #define sfd_var_read(name) \
    name.ret_temp =\
    (name.flags & SFD_FL_READ? \
@@ -190,6 +186,7 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_var_write(name, in_val) \
    name.ret_temp =\
     (in_val < name.lo_bnd? \
@@ -203,8 +200,17 @@ int sfd_result_temp_int;
           sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
-   +(name.flags & SFD_FL_CON? sfd_var_enforce_con(name) : 0)
+   +\
+   (name.flags & SFD_FL_CON?\
+      (name.constraint ?\
+         sfd_var_enforce_con(name)\
+      :\
+         0\
+      )\
+   :\
+   0)
 
+// CAN be used as expression
 #define sfd_var_incre(name, in_val) \
    name.ret_temp =\
     (name.val + (in_val) < name.lo_bnd? \
@@ -218,43 +224,63 @@ int sfd_result_temp_int;
           sfd_printf("Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
       )\
-   +(name.flags & SFD_FL_CON? sfd_var_enforce_con(name) : 0)
+   +\
+   (name.flags & SFD_FL_CON?\
+      (name.constraint ?\
+         sfd_var_enforce_con(name)\
+      :\
+         0\
+      )\
+   :\
+      0\
+   )
 
+// CAN be used as expression
 #define sfd_flag_get(name) \
    (name.flags)
 
+// CAN be used as expression
 #define sfd_flag_set(name, in_val) \
    (name.flags = (in_val))
 
+// CAN be used as expression
 #define sfd_flag_enable(name, in_val) \
    (name.flags |= (in_val))
 
+// CAN be used as expression
 #define sfd_flag_disable(name, in_val) \
    (name.flags &= ~(in_val))
 
+// CAN be used as expression
 #define sfd_var_get_lo_bnd(name) \
    (name.lo_bnd)
 
+// CAN be used as expression
 #define sfd_var_set_lo_bnd(name, in_val) \
    (name.lo_bnd = in_val)
 
+// CAN be used as expression
 #define sfd_var_get_up_bnd(name) \
    (name.up_bnd)
 
+// CAN be used as expression
 #define sfd_var_set_up_bnd(name, in_val) \
    (name.up_bnd = in_val)
 
-#define sfd_var_def_con(con_name, type, arg_name, expr)\
+// can NOT be used as expression
+#define sfd_var_def_con(con_name, type, arg_name, expr) \
    int sfd_con_##con_name##_var (type arg_name) {\
       return (expr);\
    }\
    char* sfd_con_##con_name##_var_expr = #expr;
 
+// can NOT be used as expression
 #define sfd_var_add_con(name, con_name) \
    name.constraint = &sfd_con_##con_name##_var;\
    name.con_in_effect = #con_name;\
    name.con_expr = sfd_con_##con_name##_var_expr;
 
+// CAN be used as expression
 #define sfd_var_enforce_con(name) \
    (name.constraint(name.val)? \
       0\
@@ -265,9 +291,10 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// can NOT be used as expression
 #define sfd_arr_dec_sta(type, name, in_size)\
    struct {\
-      uint_least8_t flags; \
+      uint_least16_t flags; \
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
@@ -286,29 +313,13 @@ int sfd_result_temp_int;
    name.start = name##_sfd_arr;\
    name.size = in_size;\
    bitmap_init(&name.init_map, name##_sfd_raw_init_map, NULL, in_size, 0);\
-   name.constraint_ele =\
-      _Generic(name.start[0],\
-         signed char    : &sfd_dummy_con_var_signed_char,   \
-         unsigned char  : &sfd_dummy_con_var_unsigned_char, \
-         char           : &sfd_dummy_con_var_char,          \
-         short          : &sfd_dummy_con_var_short,         \
-         unsigned short : &sfd_dummy_con_var_unsigned_short,\
-         int            : &sfd_dummy_con_var_int,           \
-         unsigned int   : &sfd_dummy_con_var_unsigned_int,  \
-         long           : &sfd_dummy_con_var_long,          \
-         unsigned long  : &sfd_dummy_con_var_unsigned_long, \
-         long long      : &sfd_dummy_con_var_long_long,     \
-         unsigned long long : &sfd_dummy_con_var_unsigned_long_long,\
-         float          : &sfd_dummy_con_var_float,         \
-         double         : &sfd_dummy_con_var_double,        \
-         long double    : &sfd_dummy_con_var_long_double    \
-      )\
-   ;\
-   name.constraint_arr = &sfd_dummy_con_arr;
+   name.constraint_ele = 0;\
+   name.constraint_arr = 0;
 
+// can NOT be used as expression
 #define sfd_arr_dec_dyn(type, name, in_size)\
    struct {\
-      uint_least8_t flags; \
+      uint_least16_t flags; \
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
@@ -334,29 +345,13 @@ int sfd_result_temp_int;
       name.size = in_size;\
       bitmap_init(&name.init_map, name##_sfd_raw_init_map, NULL, in_size, 0);\
    }\
-   name.constraint_ele =\
-      _Generic(name.start[0],\
-         signed char    : &sfd_dummy_con_var_signed_char,   \
-         unsigned char  : &sfd_dummy_con_var_unsigned_char, \
-         char           : &sfd_dummy_con_var_char,          \
-         short          : &sfd_dummy_con_var_short,         \
-         unsigned short : &sfd_dummy_con_var_unsigned_short,\
-         int            : &sfd_dummy_con_var_int,           \
-         unsigned int   : &sfd_dummy_con_var_unsigned_int,  \
-         long           : &sfd_dummy_con_var_long,          \
-         unsigned long  : &sfd_dummy_con_var_unsigned_long, \
-         long long      : &sfd_dummy_con_var_long_long,     \
-         unsigned long long : &sfd_dummy_con_var_unsigned_long_long,\
-         float          : &sfd_dummy_con_var_float,         \
-         double         : &sfd_dummy_con_var_double,        \
-         long double    : &sfd_dummy_con_var_long_double    \
-      )\
-   ;\
-   name.constraint_arr = &sfd_dummy_con_arr;
+   name.constraint_ele = 0;\
+   name.constraint_arr = 0;
 
+// can NOT be used as expression
 #define sfd_arr_dec_man(type, name, in_size, bmp_start, arr_start)\
    struct {\
-      uint_least8_t flags; \
+      uint_least16_t flags; \
       type* start;         \
       uint_fast32_t size;  \
       simple_bitmap init_map;\
@@ -373,26 +368,10 @@ int sfd_result_temp_int;
    name.start = arr_start;\
    name.size = in_size;\
    bitmap_init(&name.init_map, bmp_start, NULL, in_size, 0);\
-   name.constraint_ele =\
-      _Generic(name.start[0],\
-         signed char    : &sfd_dummy_con_var_signed_char,   \
-         unsigned char  : &sfd_dummy_con_var_unsigned_char, \
-         char           : &sfd_dummy_con_var_char,          \
-         short          : &sfd_dummy_con_var_short,         \
-         unsigned short : &sfd_dummy_con_var_unsigned_short,\
-         int            : &sfd_dummy_con_var_int,           \
-         unsigned int   : &sfd_dummy_con_var_unsigned_int,  \
-         long           : &sfd_dummy_con_var_long,          \
-         unsigned long  : &sfd_dummy_con_var_unsigned_long, \
-         long long      : &sfd_dummy_con_var_long_long,     \
-         unsigned long long : &sfd_dummy_con_var_unsigned_long_long,\
-         float          : &sfd_dummy_con_var_float,         \
-         double         : &sfd_dummy_con_var_double,        \
-         long double    : &sfd_dummy_con_var_long_double    \
-      )\
-   ;\
-   name.constraint_arr = &sfd_dummy_con_arr;
+   name.constraint_ele = 0;\
+   name.constraint_arr = 0;
 
+// CAN be used as expression
 #define sfd_arr_read(name, indx) \
    name.ret_temp =\
    (name.flags & SFD_FL_READ? \
@@ -417,14 +396,33 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_arr_write(name, indx, in_val) \
    name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
           (name.start[indx] = in_val)\
          +0* bitmap_write(&name.init_map, indx, 1, 0)\
-         +(name.flags & SFD_FL_CON_ELE? sfd_arr_enforce_con_ele(name, name.start[indx]) : 0)\
-         +(name.flags & SFD_FL_CON_ARR? sfd_arr_enforce_con_arr(name) : 0)\
+         +\
+         (name.flags & SFD_FL_CON_ELE?\
+            (name.constraint_ele ?\
+               sfd_arr_enforce_con_ele(name, name.start[indx])\
+            :\
+               0\
+            )\
+         :\
+            0\
+         )\
+         +\
+         (name.flags & SFD_FL_CON_ARR?\
+            (name.constraint_arr ?\
+               sfd_arr_enforce_con_arr(name)\
+            :\
+               0\
+            )\
+         :\
+            0\
+         )\
       :\
           sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
@@ -434,14 +432,33 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_arr_incre(name, indx, in_val) \
    name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
           (name.start[indx] += in_val)\
          +0* bitmap_write(&name.init_map, indx, 1, 0)\
-         +(name.flags & SFD_FL_CON_ELE? sfd_arr_enforce_con_ele(name, name.start[indx]) : 0)\
-         +(name.flags & SFD_FL_CON_ARR? sfd_arr_enforce_con_arr(name) : 0)\
+         +\
+         (name.flags & SFD_FL_CON_ELE?\
+            (sfd_arr_enforce_con_ele ?\
+               sfd_arr_enforce_con_ele(name, name.start[indx])\
+            :\
+               0\
+            )\
+         :\
+            0\
+         )\
+         +\
+         (name.flags & SFD_FL_CON_ARR?\
+            (sfd_arr_enforce_con_arr ?\
+               sfd_arr_enforce_con_arr(name)\
+            :\
+               0\
+            )\
+         :\
+            0\
+         )\
       :\
           sfd_printf("Index out of bound : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
@@ -451,6 +468,7 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_arr_wipe(name) \
    sfd_result_temp_int =\
    (name.flags & SFD_FL_WRITE? \
@@ -461,6 +479,7 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_arr_enforce_con_ele(name, val) \
    (name.constraint_ele(val)? \
       0\
@@ -471,6 +490,7 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// CAN be used as expression
 #define sfd_arr_enforce_con_arr(name) \
    (name.constraint_arr(0, name.start, name.size)? \
       0\
@@ -481,6 +501,7 @@ int sfd_result_temp_int;
       +sfd_force_exit()\
    )
 
+// can NOT be used as expression
 #define sfd_arr_def_con_ele(con_name, type, arg_name, expr) \
    int sfd_con_##con_name##_per_element (type arg_name) {\
       return (expr);\
@@ -500,6 +521,7 @@ int sfd_result_temp_int;
    }\
    char* sfd_con_##con_name##_arr_expr = #expr;
 
+// can NOT be used as expression
 #define sfd_arr_def_con_arr(con_name, type, func_name) \
    int sfd_con_##con_name##_array_wise (int N, ...) {\
       va_list args;\
@@ -510,6 +532,7 @@ int sfd_result_temp_int;
    }\
    char* sfd_con_##con_name##_arr_expr = #func_name;
 
+// can NOT be used as expression
 #define sfd_arr_add_con_ele(name, con_name, arr_wise) \
    name.constraint_ele     = &sfd_con_##con_name##_per_element;\
    name.con_in_effect_ele  = #con_name;                        \
@@ -520,53 +543,17 @@ int sfd_result_temp_int;
       name.con_expr_arr       = sfd_con_##con_name##_arr_expr; \
    }
 
+// can NOT be used as expression
 #define sfd_arr_add_con_arr(name, con_name) \
    name.constraint_arr     = &sfd_con_##con_name##_array_wise;\
    name.con_in_effect_arr  = #con_name;\
    name.con_expr_arr       = sfd_con_##con_name##_arr_expr;
 
+// CAN be used as expression
 #define sfd_arr_get_size(name) \
    (name.size)
 
-static int sfd_force_exit() {
-   exit(0);
-   return 0;
-}
-
-#define sfd_dummy_con_var_dec1(type) \
-   static int sfd_dummy_con_var_##type (type dum) {\
-      return 1;\
-   }
-
-#define sfd_dummy_con_var_dec2(type1, type2) \
-   static int sfd_dummy_con_var_##type1##_##type2 (type1 type2 dum) {\
-      return 1;\
-   }
-
-#define sfd_dummy_con_var_dec3(type1, type2, type3) \
-   static int sfd_dummy_con_var_##type1##_##type2##_##type3 (type1 type2 type3 dum) {\
-      return 1;\
-   }
-
-sfd_dummy_con_var_dec2(signed, char)
-sfd_dummy_con_var_dec2(unsigned, char)
-sfd_dummy_con_var_dec1(char)
-sfd_dummy_con_var_dec1(short)
-sfd_dummy_con_var_dec2(unsigned, short)
-sfd_dummy_con_var_dec1(int)
-sfd_dummy_con_var_dec2(unsigned, int)
-sfd_dummy_con_var_dec1(long)
-sfd_dummy_con_var_dec2(unsigned, long)
-sfd_dummy_con_var_dec2(long, long)
-sfd_dummy_con_var_dec3(unsigned, long, long)
-sfd_dummy_con_var_dec1(float)
-sfd_dummy_con_var_dec1(double)
-sfd_dummy_con_var_dec2(long, double)
-
-static int sfd_dummy_con_arr(int dum, ...) {
-   return 1;
-}
-
+// INTERNAL USE
 static int sfd_memset(void *str, int c, size_t n) {
    memset(str, c, n);
    return 0;
