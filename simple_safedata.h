@@ -1,7 +1,7 @@
 /* simple safe data structure library
  * Author : darrenldl <dldldev@yahoo.com>
  * 
- * Version : 0.02
+ * Version : 0.03
  * 
  * Note:
  *    The data structures themselves are not threadsafe
@@ -165,11 +165,6 @@
       )\
    ;\
    name.constraint = 0;
-
-static int sfd_force_exit() {
-   exit(SFD_ERR_RET_CODE);
-   return 0;
-}
 
 // CAN be used as expression
 #define sfd_var_read(name) \
@@ -527,6 +522,7 @@ static int sfd_force_exit() {
       int i = 0;\
       type* start = va_arg(args, type*);\
       int size = va_arg(args, uint_fast32_t);\
+      va_end(args);\
       for (i = 0; i < size; i++) {\
          if ( ! sfd_con_##con_name##_per_element(start[i])) {\
             return 0;\
@@ -543,6 +539,7 @@ static int sfd_force_exit() {
       va_start(args, N);\
       type* start = va_arg(args, type*);\
       int size = va_arg(args, uint_fast32_t);\
+      va_end(args);\
       return func_name(start, size);\
    }\
    char* sfd_con_##con_name##_arr_expr = #func_name;
@@ -568,11 +565,25 @@ static int sfd_force_exit() {
 #define sfd_arr_get_size(name) \
    (name.size)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// INTERNAL USE
+static int sfd_force_exit() {
+   exit(SFD_ERR_RET_CODE);
+   return 0;
+}
+
 // INTERNAL USE
 static int sfd_memset(void *str, int c, size_t n) {
    memset(str, c, n);
    return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
