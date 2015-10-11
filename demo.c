@@ -14,7 +14,7 @@ sfd_var_def_con(even_num, int, x, x % 2 == 0);  // constraint for a variable
 
 sfd_arr_def_con_ele(even_num, int, x, x % 2 == 0); // constraint for array elements
 
-      
+
 // we can also add a array-wise constraint, which will be added later, see below
 // note that this particular declaration must have the appropriate type for arguments
 int all_zero_func(int* arr, int size) {
