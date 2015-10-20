@@ -1,7 +1,7 @@
 /* simple safe data structure library
  * Author : darrenldl <dldldev@yahoo.com>
  * 
- * Version : 0.03
+ * Version : 0.04
  * 
  * Note:
  *    The data structures themselves are not threadsafe
@@ -39,6 +39,8 @@
 //#define SIMPLE_SAFEDATA_SILENT
 
 //#define SIMPLE_SAFEDATA_DISABLE
+
+//define SIMPLE_SAFEDATA_REPORTONLY
 
 // customise your application return code upon SFD error here
 #define SFD_ERR_RET_CODE   1404
@@ -88,12 +90,48 @@
    #define sfd_arr_add_con_ele(...) 0
    #define sfd_arr_add_con_arr(...) 0
    #define sfd_arr_get_size(...)    0
+   #define sfd_ptr_dec(type, name)  type name
+   #define sfd_ptr_link(...)
+   #define sfd_ptr_nullify(name)    (name = 0)
+   #define sfd_ptr_read(name)       name
+   #define sfd_ptr_write(name, in_val)    (*name = in_val)
+   #define sfd_ptr_incre(name, in_val)    (*name += in_val)
+   #define sfd_ptr_point_nv(name_ptr, name_var)    (name_ptr = &name_var)
+   #define sfd_ptr_point_sv(name_ptr, name_var)    (name_ptr = &name_var)
+   #define sfd_ptr_def_con_addr(...)
+   #define sfd_ptr_add_con_addr(...)   0
+   #define sfd_ptr_enforce_con_addr(...)  1
+   #define sfd_ptr_deref_read(name)    (*name)
+   #define sfd_ptr_deref_write(name, in_val)    (*name = in_val)
+   #define sfd_ptr_deref_incre(name, in_val)    (*name += in_val)
 #else
 
 #ifdef SIMPLE_SAFEDATA_SILENT
    #define sfd_printf(...) 0
 #else
-   #define sfd_printf printf
+   #define sfd_printf 0*printf
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// INTERNAL USE
+static int sfd_force_exit() {
+   #ifndef SIMPLE_SAFEDATA_REPORTONLY
+   exit(SFD_ERR_RET_CODE);
+   #endif
+   return 0;
+}
+
+// INTERNAL USE
+static int sfd_memset(void *str, int c, size_t n) {
+   memset(str, c, n);
+   return 0;
+}
+
+#ifdef __cplusplus
+}
 #endif
 
 /* Flags for sfd_var:
@@ -108,6 +146,42 @@
 #define SFD_FL_CON      0x8   // for all sfd data
 #define SFD_FL_CON_ELE  0x10  // for sfd arr
 #define SFD_FL_CON_ARR  0x20  // for sfd arr
+#define SFD_FL_SFD_VAR  0x40  // for sfd ptr
+#define SFD_FL_BOUNDED  0x60  // for sfd ptr
+#define SFD_FL_CON_ADDR 0x200 // for sfd ptr
+#define SFD_FL_CON_VAL  0x400 // for sfd ptr
+
+// CAN be used as expression
+#define sfd_flag_get(name) \
+   (name.flags)
+
+// CAN be used as expression
+#define sfd_flag_set(name, in_val) \
+   (name.flags = (in_val))
+
+// CAN be used as expression
+#define sfd_flag_enable(name, in_val) \
+   (name.flags |= (in_val))
+
+// CAN be used as expression
+#define sfd_flag_disable(name, in_val) \
+   (name.flags &= ~(in_val))
+
+// CAN be used as expression
+#define sfd_var_get_lo_bnd(name) \
+   (name.lo_bnd)
+
+// CAN be used as expression
+#define sfd_var_set_lo_bnd(name, in_val) \
+   (name.lo_bnd = in_val)
+
+// CAN be used as expression
+#define sfd_var_get_up_bnd(name) \
+   (name.up_bnd)
+
+// CAN be used as expression
+#define sfd_var_set_up_bnd(name, in_val) \
+   (name.up_bnd = in_val)
 
 // can NOT be used as expression
 #define sfd_var_dec(type, name) \
@@ -219,8 +293,12 @@
    +(name.val + (in_val) > name.up_bnd? \
       sfd_printf("sfd : Upper bound breached : file : %s, line : %d\n", __FILE__, __LINE__) + sfd_force_exit(): 0)\
    +  (name.flags & SFD_FL_WRITE? \
-          (name.val += in_val)\
-         +0* (name.flags |= SFD_FL_INITD)\
+         (name.flags & SFD_FL_INITD ?\
+            (name.val += in_val)\
+         :\
+             sfd_printf("sfd : Uninitialised incre : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
+         )\
       :\
           sfd_printf("sfd : Write not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
          +sfd_force_exit()\
@@ -236,38 +314,6 @@
       0\
    )\
    )
-
-// CAN be used as expression
-#define sfd_flag_get(name) \
-   (name.flags)
-
-// CAN be used as expression
-#define sfd_flag_set(name, in_val) \
-   (name.flags = (in_val))
-
-// CAN be used as expression
-#define sfd_flag_enable(name, in_val) \
-   (name.flags |= (in_val))
-
-// CAN be used as expression
-#define sfd_flag_disable(name, in_val) \
-   (name.flags &= ~(in_val))
-
-// CAN be used as expression
-#define sfd_var_get_lo_bnd(name) \
-   (name.lo_bnd)
-
-// CAN be used as expression
-#define sfd_var_set_lo_bnd(name, in_val) \
-   (name.lo_bnd = in_val)
-
-// CAN be used as expression
-#define sfd_var_get_up_bnd(name) \
-   (name.up_bnd)
-
-// CAN be used as expression
-#define sfd_var_set_up_bnd(name, in_val) \
-   (name.up_bnd = in_val)
 
 // can NOT be used as expression
 #define sfd_var_def_con(con_name, type, arg_name, expr) \
@@ -444,8 +490,13 @@
    name.ret_temp =\
    (name.flags & SFD_FL_WRITE? \
       (indx < name.size? \
-          (name.start[indx] += in_val)\
-         +0* bitmap_write(&name.init_map, indx, 1, 0)\
+          0* bitmap_read(&name.init_map, indx, &name.temp, 0)\
+         +  (name.temp? \
+               (name.start[indx] += in_val)\
+            :\
+                sfd_printf("sfd : Uninitialised incre : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+            )\
          +\
          (name.flags & SFD_FL_CON_ELE?\
             (name.constraint_ele ?\
@@ -565,25 +616,1114 @@
 #define sfd_arr_get_size(name) \
    (name.size)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef struct sfd_ptr_meta_data sfd_ptr_meta_data;
+struct sfd_ptr_meta_data {
+   void* val_ptr;
+   union {
+      int (*signed_char_con_addr)         (signed char*);
+      int (*unsigned_char_con_addr)       (unsigned char*);
+      int (*char_con_addr)                (char*);
+      int (*short_con_addr)               (short*);
+      int (*unsigned_short_con_addr)      (unsigned short*);
+      int (*int_con_addr)                 (int*);
+      int (*unsigned_int_con_addr)        (unsigned int*);
+      int (*long_con_addr)                (long*);
+      int (*unsigned_long_con_addr)       (unsigned long*);
+      int (*long_long_con_addr)           (long long*);
+      int (*unsigned_long_long_con_addr)  (unsigned long long*);
+      int (*float_con_addr)               (float*);
+      int (*double_con_addr)              (double*);
+      int (*long_double_con_addr)         (long double*);
+   } con_addr;
+   union {
+      int (**signed_char_con_val)          (signed char);
+      int (**unsigned_char_con_val)        (unsigned char);
+      int (**char_con_val)                 (char);
+      int (**short_con_val)                (short);
+      int (**unsigned_short_con_val)       (unsigned short);
+      int (**int_con_val)                  (int);
+      int (**unsigned_int_con_val)         (unsigned int);
+      int (**long_con_val)                 (long);
+      int (**unsigned_long_con_val)        (unsigned long);
+      int (**long_long_con_val)            (long long);
+      int (**unsigned_long_long_con_val)   (unsigned long long);
+      int (**float_con_val)                (float);
+      int (**double_con_val)               (double);
+      int (**long_double_con_val)          (long double);
+   } con_val;
+   uint_least8_t ptr_type;
+   uint_least16_t flags;
+   uint_least16_t* var_flags;
+   char* con_addr_in_effect;
+   char* con_addr_expr;
+   char** con_val_in_effect;
+   char** con_val_expr;
+   sfd_ptr_meta_data* prev;
+   sfd_ptr_meta_data* next;
+};
 
-// INTERNAL USE
-static int sfd_force_exit() {
-   exit(SFD_ERR_RET_CODE);
+// ONLY USED IN ARGUMENT LIST IN DECLARATION OF FUNCTION
+#define sfd_ptr_as_args(type, name) \
+   sfd_ptr_meta_data* name, type* name##_sfd_ptr
+
+// ONLY USED IN CALLING OF FUNCTION
+#define sfd_ptr_pass(name) \
+   &name, name##_sfd_ptr
+
+// ONLY USED TO SET UP LOCAL SFD_PTR WITHIN A FUNCTION
+#define sfd_ptr_return_meta(name) \
+   *name
+
+#define SFD_PTR_SIGNED_CHAR        0x1
+#define SFD_PTR_UNSIGNED_CHAR      0x2
+#define SFD_PTR_CHAR               0x3
+#define SFD_PTR_SHORT              0x4
+#define SFD_PTR_UNSIGNED_SHORT     0x5
+#define SFD_PTR_INT                0x6
+#define SFD_PTR_UNSIGNED_INT       0x7
+#define SFD_PTR_LONG               0x8
+#define SFD_PTR_UNSIGNED_LONG      0x9
+#define SFD_PTR_LONG_LONG          0x10
+#define SFD_PTR_UNSIGNED_LONG_LONG 0x11
+#define SFD_PTR_FLOAT              0x12
+#define SFD_PTR_DOUBLE             0x13
+#define SFD_PTR_LONG_DOUBLE        0x14
+
+// can NOT be used as expression
+#define sfd_ptr_dec(type, name) \
+   sfd_ptr_meta_data name;\
+   type name##_sfd_ptr;\
+   name.ptr_type =\
+      _Generic((type) 0,\
+         signed char    * : SFD_PTR_SIGNED_CHAR,   \
+         unsigned char  * : SFD_PTR_UNSIGNED_CHAR, \
+         char           * : SFD_PTR_CHAR,          \
+         short          * : SFD_PTR_SHORT,         \
+         unsigned short * : SFD_PTR_UNSIGNED_SHORT,\
+         int            * : SFD_PTR_INT,           \
+         unsigned int   * : SFD_PTR_UNSIGNED_INT,  \
+         long           * : SFD_PTR_LONG,          \
+         unsigned long  * : SFD_PTR_UNSIGNED_LONG, \
+         long long      * : SFD_PTR_LONG_LONG,     \
+         unsigned long long * : SFD_PTR_UNSIGNED_LONG_LONG,\
+         float          * : SFD_PTR_FLOAT,         \
+         double         * : SFD_PTR_DOUBLE,        \
+         long double    * : SFD_PTR_LONG_DOUBLE,   \
+         default :\
+             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
+      )\
+   ;\
+   name.flags = SFD_FL_READ | SFD_FL_WRITE | SFD_FL_CON_ADDR | SFD_FL_CON_VAL;\
+   name.prev = 0;\
+   name.next = 0;\
+   name.var_flags = 0;\
+   _Generic(name##_sfd_ptr,\
+      signed char    * : name.con_addr.signed_char_con_addr        = 0,\
+      unsigned char  * : name.con_addr.unsigned_char_con_addr      = 0,\
+      char           * : name.con_addr.char_con_addr               = 0,\
+      short          * : name.con_addr.short_con_addr              = 0,\
+      unsigned short * : name.con_addr.unsigned_short_con_addr     = 0,\
+      int            * : name.con_addr.int_con_addr                = 0,\
+      unsigned int   * : name.con_addr.unsigned_int_con_addr       = 0,\
+      long           * : name.con_addr.long_con_addr               = 0,\
+      unsigned long  * : name.con_addr.unsigned_long_con_addr      = 0,\
+      long long      * : name.con_addr.long_long_con_addr          = 0,\
+      unsigned long long * : name.con_addr.unsigned_long_long_con_addr = 0,\
+      float          * : name.con_addr.float_con_addr              = 0,\
+      double         * : name.con_addr.double_con_addr             = 0,\
+      long double    * : name.con_addr.long_double_con_addr        = 0,\
+      default :\
+          sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+   );\
+   _Generic(name##_sfd_ptr,\
+      signed char    * : name.con_val.signed_char_con_val          = 0,\
+      unsigned char  * : name.con_val.unsigned_char_con_val        = 0,\
+      char           * : name.con_val.char_con_val                 = 0,\
+      short          * : name.con_val.short_con_val                = 0,\
+      unsigned short * : name.con_val.unsigned_short_con_val       = 0,\
+      int            * : name.con_val.int_con_val                  = 0,\
+      unsigned int   * : name.con_val.unsigned_int_con_val         = 0,\
+      long           * : name.con_val.long_con_val                 = 0,\
+      unsigned long  * : name.con_val.unsigned_long_con_val        = 0,\
+      long long      * : name.con_val.long_long_con_val            = 0,\
+      unsigned long long * : name.con_val.unsigned_long_long_con_val   = 0,\
+      float          * : name.con_val.float_con_val                = 0,\
+      double         * : name.con_val.double_con_val               = 0,\
+      long double    * : name.con_val.long_double_con_val          = 0,\
+      default :\
+          sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+   );
+
+static int sfd_ptr_link_func (sfd_ptr_meta_data* old_node, sfd_ptr_meta_data* new_node, char* file, int line) {
+   if (old_node == 0) {
+      sfd_printf("Old node pointer is null : file : %s, line : %d\n", file, line);
+      sfd_force_exit();
+   }
+   if (new_node == 0) {
+      sfd_printf("New node pointer is null : file : %s, line : %d\n", file, line);
+      sfd_force_exit();
+   }
+   
+   if (old_node->next == 0) {    // at the end
+      old_node->next = new_node;
+      new_node->prev = old_node;
+   }
+   else if (old_node->prev == 0) {  // at the front
+      old_node->prev = new_node;
+      new_node->next = old_node;
+   }
+   else {                           // in the middle
+      (old_node->next)->prev = new_node;
+      new_node->next = old_node->next;
+      old_node->next = new_node;
+      new_node->prev = old_node;
+   }
+   
    return 0;
 }
 
-// INTERNAL USE
-static int sfd_memset(void *str, int c, size_t n) {
-   memset(str, c, n);
+// CAN be used as expression
+#define sfd_ptr_link(name1, name2) \
+   sfd_ptr_link_func(&name1, &name2, __FILE__, __LINE__)
+
+static int sfd_ptr_nullify_func (sfd_ptr_meta_data* node, signed char direction) {
+   node->val_ptr = 0;
+   node->var_flags = 0;
+   if (direction == 0) {
+      if (node->prev != 0) {
+         sfd_ptr_nullify_func(node->prev, -1);
+         node->prev = 0;
+      }
+      if (node->next != 0) {
+         sfd_ptr_nullify_func(node->next, 1);
+         node->next = 0;
+      }
+   }
+   else if (direction < 0) {
+      if (node->prev != 0) {
+         sfd_ptr_nullify_func(node->prev, -1);
+         node->prev = 0;
+      }
+   }
+   else if (direction > 0) {
+      if (node->next != 0) {
+         sfd_ptr_nullify_func(node->next, 1);
+         node->next = 0;
+      }
+   }
    return 0;
 }
 
-#ifdef __cplusplus
+// CAN be used as expression
+#define sfd_ptr_nullify(name) \
+   (name.flags & SFD_FL_WRITE ?\
+      sfd_ptr_nullify_func(&name, 0)\
+   :\
+       sfd_printf("Write to pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_read(name) \
+   (\
+   (name.flags & SFD_FL_READ ?\
+      (name.flags & SFD_FL_INITD? \
+         _Generic(name##_sfd_ptr,\
+            signed char    * : (signed char*)    name.val_ptr,\
+            unsigned char  * : (unsigned char*)  name.val_ptr,\
+            char           * : (char*)           name.val_ptr,\
+            short          * : (short*)          name.val_ptr,\
+            unsigned short * : (unsigned short*) name.val_ptr,\
+            int            * : (int*)            name.val_ptr,\
+            unsigned int   * : (unsigned int*)   name.val_ptr,\
+            long           * : (long*)           name.val_ptr,\
+            unsigned long  * : (unsigned long*)  name.val_ptr,\
+            long long      * : (long*)           name.val_ptr,\
+            unsigned long long * : (unsigned long long*) name.val_ptr,\
+            float          * : (float*)          name.val_ptr,\
+            double         * : (double*)         name.val_ptr,\
+            long double    * : (long double*)    name.val_ptr,\
+            default :\
+                sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+         )\
+      :\
+          (void*)0\
+         +sfd_printf("Uninitialised read from pointer : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+      )\
+   :\
+       (void*)0\
+      +sfd_printf("Read from pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_write(name, in_val) \
+   (\
+   (name.flags & SFD_FL_WRITE ?\
+      _Generic(name##_sfd_ptr,\
+         signed char    * : name.val_ptr = (signed char*) in_val     + 0*(name.flags |= SFD_FL_INITD),\
+         unsigned char  * : name.val_ptr = (unsigned char*) in_val   + 0*(name.flags |= SFD_FL_INITD),\
+         char           * : name.val_ptr = (char*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+         short          * : name.val_ptr = (short*) in_val           + 0*(name.flags |= SFD_FL_INITD),\
+         unsigned short * : name.val_ptr = (unsigned short*) in_val  + 0*(name.flags |= SFD_FL_INITD),\
+         int            * : name.val_ptr = (int*) in_val             + 0*(name.flags |= SFD_FL_INITD),\
+         unsigned int   * : name.val_ptr = (unsigned int*) in_val    + 0*(name.flags |= SFD_FL_INITD),\
+         long           * : name.val_ptr = (long*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+         unsigned long  * : name.val_ptr = (unsigned long*) in_val   + 0*(name.flags |= SFD_FL_INITD),\
+         long long      * : name.val_ptr = (long*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+         unsigned long long * : name.val_ptr = (unsigned long long*) in_val + 0*(name.flags |= SFD_FL_INITD),\
+         float          * : name.val_ptr = (float*) in_val           + 0*(name.flags |= SFD_FL_INITD),\
+         double         * : name.val_ptr = (double*) in_val          + 0*(name.flags |= SFD_FL_INITD),\
+         long double    * : name.val_ptr = (long double*) in_val     + 0*(name.flags |= SFD_FL_INITD),\
+         default :\
+             sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
+      )\
+   :\
+       (void*)0\
+      +sfd_printf("Write to pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   +\
+   (name.flags & SFD_FL_CON_ADDR ?\
+      sfd_ptr_enforce_con_addr(name)\
+   :\
+      0\
+   )\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_incre(name, in_val) \
+   (\
+   (name.flags & SFD_FL_WRITE ?\
+      (name.flags & SFD_FL_INITD ?\
+         _Generic(name##_sfd_ptr,\
+            signed char    * : name.val_ptr += (signed char*) in_val     + 0*(name.flags |= SFD_FL_INITD),\
+            unsigned char  * : name.val_ptr += (unsigned char*) in_val   + 0*(name.flags |= SFD_FL_INITD),\
+            char           * : name.val_ptr += (char*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+            short          * : name.val_ptr += (short*) in_val           + 0*(name.flags |= SFD_FL_INITD),\
+            unsigned short * : name.val_ptr += (unsigned short*) in_val  + 0*(name.flags |= SFD_FL_INITD),\
+            int            * : name.val_ptr += (int*) in_val             + 0*(name.flags |= SFD_FL_INITD),\
+            unsigned int   * : name.val_ptr += (unsigned int*) in_val    + 0*(name.flags |= SFD_FL_INITD),\
+            long           * : name.val_ptr += (long*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+            unsigned long  * : name.val_ptr += (unsigned long*) in_val   + 0*(name.flags |= SFD_FL_INITD),\
+            long long      * : name.val_ptr += (long*) in_val            + 0*(name.flags |= SFD_FL_INITD),\
+            unsigned long long * : name.val_ptr += (unsigned long long*) in_val + 0*(name.flags |= SFD_FL_INITD),\
+            float          * : name.val_ptr += (float*) in_val           + 0*(name.flags |= SFD_FL_INITD),\
+            double         * : name.val_ptr += (double*) in_val          + 0*(name.flags |= SFD_FL_INITD),\
+            long double    * : name.val_ptr += (long double*) in_val     + 0*(name.flags |= SFD_FL_INITD),\
+            default :\
+                sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+         )\
+      :\
+          sfd_printf("sfd : Uninitialised incre : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+      )\
+   :\
+       sfd_printf("Write to pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   )
+
+// can NOT be used as expression
+#define sfd_ptr_point_nv(name_ptr, name_var) \
+   if (name_ptr.flags & SFD_FL_WRITE) {\
+      (name_ptr.flags &= ~SFD_FL_SFD_VAR);\
+      sfd_ptr_link_var_flags_func(&name_ptr, 0);\
+      sfd_ptr_write(name_ptr, &name_var);\
+      switch (name_ptr.ptr_type) {\
+         case SFD_PTR_SIGNED_CHAR :\
+            name_ptr.con_val.signed_char_con_val    = (void *) 0;\
+            break;\
+         case SFD_PTR_UNSIGNED_CHAR :\
+            name_ptr.con_val.unsigned_char_con_val  = (void *) 0;\
+            break;\
+         case SFD_PTR_CHAR :\
+            name_ptr.con_val.char_con_val           = (void *) 0;\
+            break;\
+         case SFD_PTR_SHORT :\
+            name_ptr.con_val.short_con_val          = (void *) 0;\
+            break;\
+         case SFD_PTR_UNSIGNED_SHORT :\
+            name_ptr.con_val.unsigned_short_con_val = (void *) 0;\
+            break;\
+         case SFD_PTR_INT :\
+            name_ptr.con_val.int_con_val            = (void *) 0;\
+            break;\
+         case SFD_PTR_UNSIGNED_INT :\
+            name_ptr.con_val.unsigned_int_con_val   = (void *) 0;\
+            break;\
+         case SFD_PTR_LONG :\
+            name_ptr.con_val.long_con_val           = (void *) 0;\
+            break;\
+         case SFD_PTR_UNSIGNED_LONG :\
+            name_ptr.con_val.unsigned_long_con_val  = (void *) 0;\
+            break;\
+         case SFD_PTR_LONG_LONG :\
+            name_ptr.con_val.long_long_con_val      = (void *) 0;\
+            break;\
+         case SFD_PTR_UNSIGNED_LONG_LONG :\
+            name_ptr.con_val.unsigned_long_long_con_val = (void *) 0;\
+            break;\
+         case SFD_PTR_FLOAT :\
+            name_ptr.con_val.float_con_val          = (void *) 0;\
+            break;\
+         case SFD_PTR_DOUBLE :\
+            name_ptr.con_val.double_con_val         = (void *) 0;\
+            break;\
+         case SFD_PTR_LONG_DOUBLE :\
+            name_ptr.con_val.long_double_con_val    = (void *) 0;\
+            break;\
+         default :\
+            sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__);\
+            sfd_force_exit();\
+      }\
+   }\
+   else {\
+      sfd_printf("Write to pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__);\
+      sfd_force_exit();\
+   }
+
+static int sfd_ptr_link_var_flags_func (sfd_ptr_meta_data* name, uint_least16_t* p_flags) {
+   name->var_flags = p_flags;
+   
+   return 0;
 }
-#endif
+
+// can NOT be used as expression
+#define sfd_ptr_point_sv(name_ptr, name_var) \
+   if (name_ptr.flags & SFD_FL_WRITE) {\
+      (name_ptr.flags |= SFD_FL_SFD_VAR);\
+      sfd_ptr_link_var_flags_func(&name_ptr, &name_var.flags);\
+      sfd_ptr_write(name_ptr, &name_var.val);\
+      switch (name_ptr.ptr_type) {\
+         case SFD_PTR_SIGNED_CHAR :\
+            name_ptr.con_val.signed_char_con_val    = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_UNSIGNED_CHAR :\
+            name_ptr.con_val.unsigned_char_con_val  = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_CHAR :\
+            name_ptr.con_val.char_con_val           = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_SHORT :\
+            name_ptr.con_val.short_con_val          = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_UNSIGNED_SHORT :\
+            name_ptr.con_val.unsigned_short_con_val = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_INT :\
+            name_ptr.con_val.int_con_val            = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_UNSIGNED_INT :\
+            name_ptr.con_val.unsigned_int_con_val   = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_LONG :\
+            name_ptr.con_val.long_con_val           = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_UNSIGNED_LONG :\
+            name_ptr.con_val.unsigned_long_con_val  = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_LONG_LONG :\
+            name_ptr.con_val.long_long_con_val      = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_UNSIGNED_LONG_LONG :\
+            name_ptr.con_val.unsigned_long_long_con_val = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_FLOAT :\
+            name_ptr.con_val.float_con_val          = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_DOUBLE :\
+            name_ptr.con_val.double_con_val         = (void *) &name_var.constraint;\
+            break;\
+         case SFD_PTR_LONG_DOUBLE :\
+            name_ptr.con_val.long_double_con_val    = (void *) &name_var.constraint;\
+            break;\
+         default :\
+            sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__);\
+            sfd_force_exit();\
+      }\
+      name_ptr.con_val_in_effect = &name_var.con_in_effect;\
+      name_ptr.con_val_expr = &name_var.con_expr;\
+   }\
+   else {\
+      sfd_printf("Write to pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__);\
+      sfd_force_exit();\
+   }
+
+// can NOT be used as expression
+#define sfd_ptr_def_con_addr(con_name, type, arg_name, expr) \
+   int sfd_con_##con_name##_addr (type arg_name) {\
+      return (expr);\
+   }\
+   char* sfd_con_##con_name##_addr_expr = #expr;
+
+// can NOT be used as expression
+#define sfd_ptr_add_con_addr(name, con_name) \
+   switch (name.ptr_type) {\
+      case SFD_PTR_SIGNED_CHAR :\
+         name.con_addr.signed_char_con_addr      = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_UNSIGNED_CHAR :\
+         name.con_addr.unsigned_char_con_addr    = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_CHAR :\
+         name.con_addr.char_con_addr             = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_SHORT :\
+         name.con_addr.short_con_addr            = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_UNSIGNED_SHORT :\
+         name.con_addr.unsigned_short_con_addr   = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_INT :\
+         name.con_addr.int_con_addr              = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_UNSIGNED_INT :\
+         name.con_addr.unsigned_int_con_addr     = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_LONG :\
+         name.con_addr.long_con_addr             = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_UNSIGNED_LONG :\
+         name.con_addr.unsigned_long_con_addr    = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_LONG_LONG :\
+         name.con_addr.long_long_con_addr        = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_UNSIGNED_LONG_LONG :\
+         name.con_addr.unsigned_long_con_addr    = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_FLOAT :\
+         name.con_addr.float_con_addr            = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_DOUBLE :\
+         name.con_addr.double_con_addr           = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      case SFD_PTR_LONG_DOUBLE :\
+         name.con_addr.long_double_con_addr      = (void *) &sfd_con_##con_name##_addr;\
+         break;\
+      default :\
+         sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__);\
+         sfd_force_exit();\
+   }\
+   name.con_addr_in_effect = #con_name;\
+   name.con_addr_expr = sfd_con_##con_name##_addr_expr;
+
+// CAN be used as expression
+#define sfd_ptr_enforce_con_addr(name) \
+   (_Generic(name##_sfd_ptr,\
+      signed char    * : \
+         (name.con_addr.signed_char_con_addr ?\
+            name.con_addr.signed_char_con_addr((signed char*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      unsigned char  * : \
+         (name.con_addr.unsigned_char_con_addr ?\
+            name.con_addr.unsigned_char_con_addr((unsigned char*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      char           * : \
+         (name.con_addr.char_con_addr ?\
+            name.con_addr.char_con_addr((char*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      short          * : \
+         (name.con_addr.short_con_addr ?\
+            name.con_addr.short_con_addr((short*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      unsigned short * : \
+         (name.con_addr.unsigned_short_con_addr ?\
+            name.con_addr.unsigned_short_con_addr((unsigned short*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      int            * : \
+         (name.con_addr.int_con_addr ?\
+            name.con_addr.int_con_addr((int*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      unsigned int   * : \
+         (name.con_addr.unsigned_int_con_addr ?\
+            name.con_addr.unsigned_int_con_addr((unsigned int*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      long           * : \
+         (name.con_addr.long_con_addr ?\
+            name.con_addr.long_con_addr((long*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      unsigned long  * : \
+         (name.con_addr.unsigned_long_con_addr ?\
+            name.con_addr.unsigned_long_con_addr((unsigned long*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      long long      * : \
+         (name.con_addr.long_long_con_addr ?\
+            name.con_addr.long_long_con_addr((long long*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      unsigned long long * : \
+         (name.con_addr.unsigned_long_long_con_addr ?\
+            name.con_addr.unsigned_long_long_con_addr((unsigned long long*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      float          * : \
+         (name.con_addr.float_con_addr ?\
+            name.con_addr.float_con_addr((float*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      double         * : \
+         (name.con_addr.double_con_addr ?\
+            name.con_addr.double_con_addr((double*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      long double    * : \
+         (name.con_addr.long_double_con_addr ?\
+            name.con_addr.long_double_con_addr((long double*) name.val_ptr)\
+         :\
+            1\
+         ),\
+      default :\
+          sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+      )\
+   ?\
+      0\
+   :\
+       sfd_printf("Constraint on pointer failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_printf("  Constraint in effect  : %s\n", name.con_addr_in_effect)\
+      +sfd_printf("  Constraint expression : %s\n", name.con_addr_expr)\
+      +sfd_force_exit()\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_deref_read(name) \
+   (\
+   (name.flags & SFD_FL_READ ?\
+      (name.val_ptr ?\
+         (name.flags & SFD_FL_SFD_VAR ?\
+            (*name.var_flags & SFD_FL_READ ?\
+               (*name.var_flags & SFD_FL_INITD ?\
+                     _Generic(name##_sfd_ptr,\
+                        signed char    * : *((signed char*)    name.val_ptr),\
+                        unsigned char  * : *((unsigned char*)  name.val_ptr),\
+                        char           * : *((char*)           name.val_ptr),\
+                        short          * : *((short*)          name.val_ptr),\
+                        unsigned short * : *((unsigned short*) name.val_ptr),\
+                        int            * : *((int*)            name.val_ptr),\
+                        unsigned int   * : *((unsigned int*)   name.val_ptr),\
+                        long           * : *((long*)           name.val_ptr),\
+                        unsigned long  * : *((unsigned long*)  name.val_ptr),\
+                        long long      * : *((long long*)      name.val_ptr),\
+                        unsigned long long * : *((unsigned long long*) name.val_ptr),\
+                        float          * : *((float*)          name.val_ptr),\
+                        double         * : *((double*)         name.val_ptr),\
+                        long double    * : *((long double*)    name.val_ptr),\
+                        default :\
+                            sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                           +sfd_force_exit()\
+                     )\
+               :\
+                   sfd_printf("Uninitialised read : file : %s, line : %d\n", __FILE__, __LINE__)\
+                  +sfd_force_exit()\
+               )\
+            :\
+                sfd_printf("Read from variable pointed to not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+            )\
+         :\
+            _Generic(name##_sfd_ptr,\
+               signed char    * : *((signed char*)    name.val_ptr),\
+               unsigned char  * : *((unsigned char*)  name.val_ptr),\
+               char           * : *((char*)           name.val_ptr),\
+               short          * : *((short*)          name.val_ptr),\
+               unsigned short * : *((unsigned short*) name.val_ptr),\
+               int            * : *((int*)            name.val_ptr),\
+               unsigned int   * : *((unsigned int*)   name.val_ptr),\
+               long           * : *((long*)           name.val_ptr),\
+               unsigned long  * : *((unsigned long*)  name.val_ptr),\
+               long long      * : *((long long*)      name.val_ptr),\
+               unsigned long long * : *((unsigned long long*) name.val_ptr),\
+               float          * : *((float*)          name.val_ptr),\
+               double         * : *((double*)         name.val_ptr),\
+               long double    * : *((long double*)    name.val_ptr),\
+               default :\
+                   sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                  +sfd_force_exit()\
+            )\
+         )\
+      :\
+          sfd_printf("Null pointer deref read : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+      )\
+   :\
+       sfd_printf("Read from pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_deref_write(name, in_val) \
+   (\
+   (name.flags & SFD_FL_READ ?\
+      (name.val_ptr ?\
+         (name.flags & SFD_FL_SFD_VAR ?\
+            (*name.var_flags & SFD_FL_WRITE ?\
+                  _Generic(name##_sfd_ptr,\
+                        signed char    * : *((signed char*)    name.val_ptr) = (signed char)    in_val,\
+                        unsigned char  * : *((unsigned char*)  name.val_ptr) = (unsigned char)  in_val,\
+                        char           * : *((char*)           name.val_ptr) = (char)           in_val,\
+                        short          * : *((short*)          name.val_ptr) = (short)          in_val,\
+                        unsigned short * : *((unsigned short*) name.val_ptr) = (unsigned short) in_val,\
+                        int            * : *((int*)            name.val_ptr) = (int)            in_val,\
+                        unsigned int   * : *((unsigned int*)   name.val_ptr) = (unsigned int)   in_val,\
+                        long           * : *((long*)           name.val_ptr) = (long)           in_val,\
+                        unsigned long  * : *((unsigned long*)  name.val_ptr) = (unsigned long)  in_val,\
+                        long long      * : *((long long*)      name.val_ptr) = (long long)      in_val,\
+                        unsigned long long * : *((unsigned long long*) name.val_ptr) = (unsigned long long) in_val,\
+                        float          * : *((float*)          name.val_ptr) = (float)          in_val,\
+                        double         * : *((double*)         name.val_ptr) = (double)         in_val,\
+                        long double    * : *((long double*)    name.val_ptr) = (long double)    in_val,\
+                     default :\
+                         sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                        +sfd_force_exit()\
+                  )\
+                  +\
+                  (*name.var_flags & SFD_FL_CON ?\
+                     (_Generic(name##_sfd_ptr,\
+                        signed char    * : \
+                           (name.con_val.signed_char_con_val ?\
+                              (*name.con_val.signed_char_con_val ?\
+                                 (*name.con_val.signed_char_con_val)     (*((signed char*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        unsigned char  * : \
+                           (name.con_val.unsigned_char_con_val ?\
+                              (*name.con_val.unsigned_char_con_val ?\
+                                 (*name.con_val.unsigned_char_con_val)     (*((unsigned char*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        char           * : \
+                           (name.con_val.char_con_val ?\
+                              (*name.con_val.char_con_val ?\
+                                 (*name.con_val.char_con_val)     (*((char*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        short          * : \
+                           (name.con_val.short_con_val ?\
+                              (*name.con_val.short_con_val ?\
+                                 (*name.con_val.short_con_val)     (*((short*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        unsigned short * : \
+                           (name.con_val.unsigned_short_con_val ?\
+                              (*name.con_val.unsigned_short_con_val ?\
+                                 (*name.con_val.unsigned_short_con_val)     (*((unsigned short*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        int            * : \
+                           (name.con_val.int_con_val ?\
+                              (*name.con_val.int_con_val ?\
+                                 (*name.con_val.int_con_val)     (*((int*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        unsigned int   * : \
+                           (name.con_val.unsigned_int_con_val ?\
+                              (*name.con_val.unsigned_int_con_val ?\
+                                 (*name.con_val.unsigned_int_con_val)     (*((unsigned int*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        long           * : \
+                           (name.con_val.long_con_val ?\
+                              (*name.con_val.long_con_val ?\
+                                 (*name.con_val.long_con_val)     (*((long*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        unsigned long  * : \
+                           (name.con_val.unsigned_long_con_val ?\
+                              (*name.con_val.unsigned_long_con_val ?\
+                                 (*name.con_val.unsigned_long_con_val)     (*((unsigned long*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        long long      * : \
+                           (name.con_val.long_long_con_val ?\
+                              (*name.con_val.long_long_con_val ?\
+                                 (*name.con_val.long_long_con_val)     (*((long long*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        unsigned long long * : \
+                           (name.con_val.unsigned_long_long_con_val ?\
+                              (*name.con_val.unsigned_long_long_con_val ?\
+                                 (*name.con_val.unsigned_long_long_con_val)     (*((unsigned long long*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        float          * : \
+                           (name.con_val.float_con_val ?\
+                              (*name.con_val.float_con_val ?\
+                                 (*name.con_val.float_con_val)     (*((float*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        double         * : \
+                           (name.con_val.double_con_val ?\
+                              (*name.con_val.double_con_val ?\
+                                 (*name.con_val.double_con_val)     (*((double*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        long double    * : \
+                           (name.con_val.long_double_con_val ?\
+                              (*name.con_val.long_double_con_val ?\
+                                 (*name.con_val.long_double_con_val)     (*((long double*) name.val_ptr))\
+                              :\
+                                 1\
+                              )\
+                           :\
+                              1\
+                           ),\
+                        default :\
+                            sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                           +sfd_force_exit()\
+                        )\
+                     ?\
+                        0\
+                     :\
+                         sfd_printf("Constraint on variable pointed to failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+                        +sfd_printf("  Constraint in effect  : %s\n", *name.con_val_in_effect)\
+                        +sfd_printf("  Constraint expression : %s\n", *name.con_val_expr)\
+                        +sfd_force_exit()\
+                     )\
+                     +\
+                     (*name.var_flags |= SFD_FL_INITD)\
+                  :\
+                     0\
+                  )\
+            :\
+                sfd_printf("Write to variable pointed to not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+            )\
+         :\
+            _Generic(name##_sfd_ptr,\
+               signed char    * : *((signed char*)    name.val_ptr) = (signed char)    in_val,\
+               unsigned char  * : *((unsigned char*)  name.val_ptr) = (unsigned char)  in_val,\
+               char           * : *((char*)           name.val_ptr) = (char)           in_val,\
+               short          * : *((short*)          name.val_ptr) = (short)          in_val,\
+               unsigned short * : *((unsigned short*) name.val_ptr) = (unsigned short) in_val,\
+               int            * : *((int*)            name.val_ptr) = (int)            in_val,\
+               unsigned int   * : *((unsigned int*)   name.val_ptr) = (unsigned int)   in_val,\
+               long           * : *((long*)           name.val_ptr) = (long)           in_val,\
+               unsigned long  * : *((unsigned long*)  name.val_ptr) = (unsigned long)  in_val,\
+               long long      * : *((long long*)      name.val_ptr) = (long long)      in_val,\
+               unsigned long long * : *((unsigned long long*) name.val_ptr) = (unsigned long long) in_val,\
+               float          * : *((float*)          name.val_ptr) = (float)          in_val,\
+               double         * : *((double*)         name.val_ptr) = (double)         in_val,\
+               long double    * : *((long double*)    name.val_ptr) = (long double)    in_val,\
+               default :\
+                   sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                  +sfd_force_exit()\
+            )\
+         )\
+      :\
+          sfd_printf("Null pointer deref write : file : %s, line : %d\n", __FILE__, __LINE__)\
+         +sfd_force_exit()\
+      )\
+   :\
+       sfd_printf("Read from pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   )
+
+// CAN be used as expression
+#define sfd_ptr_deref_incre(name, in_val) \
+   (\
+   (name.flags & SFD_FL_READ ?\
+      (name.flags & SFD_FL_SFD_VAR ?\
+         (*name.var_flags & SFD_FL_WRITE ?\
+            (*name.var_flags & SFD_FL_INITD ?\
+               _Generic(name##_sfd_ptr,\
+                  signed char    * : *((signed char*)    name.val_ptr) += (signed char)    in_val,\
+                  unsigned char  * : *((unsigned char*)  name.val_ptr) += (unsigned char)  in_val,\
+                  char           * : *((char*)           name.val_ptr) += (char)           in_val,\
+                  short          * : *((short*)          name.val_ptr) += (short)          in_val,\
+                  unsigned short * : *((unsigned short*) name.val_ptr) += (unsigned short) in_val,\
+                  int            * : *((int*)            name.val_ptr) += (int)            in_val,\
+                  unsigned int   * : *((unsigned int*)   name.val_ptr) += (unsigned int)   in_val,\
+                  long           * : *((long*)           name.val_ptr) += (long)           in_val,\
+                  unsigned long  * : *((unsigned long*)  name.val_ptr) += (unsigned long)  in_val,\
+                  long long      * : *((long long*)      name.val_ptr) += (long long)      in_val,\
+                  unsigned long long * : *((unsigned long long*) name.val_ptr) += (unsigned long long) in_val,\
+                  float          * : *((float*)          name.val_ptr) += (float)          in_val,\
+                  double         * : *((double*)         name.val_ptr) += (double)         in_val,\
+                  long double    * : *((long double*)    name.val_ptr) += (long double)    in_val,\
+                  default :\
+                      sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                     +sfd_force_exit()\
+               )\
+               +\
+               (*name.var_flags & SFD_FL_CON ?\
+                  (_Generic(name##_sfd_ptr,\
+                     signed char    * : \
+                        (name.con_val.signed_char_con_val ?\
+                           (*name.con_val.signed_char_con_val ?\
+                              (*name.con_val.signed_char_con_val)     (*((signed char*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     unsigned char  * : \
+                        (name.con_val.unsigned_char_con_val ?\
+                           (*name.con_val.unsigned_char_con_val ?\
+                              (*name.con_val.unsigned_char_con_val)     (*((unsigned char*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     char           * : \
+                        (name.con_val.char_con_val ?\
+                           (*name.con_val.char_con_val ?\
+                              (*name.con_val.char_con_val)     (*((char*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     short          * : \
+                        (name.con_val.short_con_val ?\
+                           (*name.con_val.short_con_val ?\
+                              (*name.con_val.short_con_val)     (*((short*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     unsigned short * : \
+                        (name.con_val.unsigned_short_con_val ?\
+                           (*name.con_val.unsigned_short_con_val ?\
+                              (*name.con_val.unsigned_short_con_val)     (*((unsigned short*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     int            * : \
+                        (name.con_val.int_con_val ?\
+                           (*name.con_val.int_con_val ?\
+                              (*name.con_val.int_con_val)     (*((int*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     unsigned int   * : \
+                        (name.con_val.unsigned_int_con_val ?\
+                           (*name.con_val.unsigned_int_con_val ?\
+                              (*name.con_val.unsigned_int_con_val)     (*((unsigned int*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     long           * : \
+                        (name.con_val.long_con_val ?\
+                           (*name.con_val.long_con_val ?\
+                              (*name.con_val.long_con_val)     (*((long*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     unsigned long  * : \
+                        (name.con_val.unsigned_long_con_val ?\
+                           (*name.con_val.unsigned_long_con_val ?\
+                              (*name.con_val.unsigned_long_con_val)     (*((unsigned long*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     long long      * : \
+                        (name.con_val.long_long_con_val ?\
+                           (*name.con_val.long_long_con_val ?\
+                              (*name.con_val.long_long_con_val)     (*((long long*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     unsigned long long * : \
+                        (name.con_val.unsigned_long_long_con_val ?\
+                           (*name.con_val.unsigned_long_long_con_val ?\
+                              (*name.con_val.unsigned_long_long_con_val)     (*((unsigned long long*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     float          * : \
+                        (name.con_val.float_con_val ?\
+                           (*name.con_val.float_con_val ?\
+                              (*name.con_val.float_con_val)     (*((float*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     double         * : \
+                        (name.con_val.double_con_val ?\
+                           (*name.con_val.double_con_val ?\
+                              (*name.con_val.double_con_val)     (*((double*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     long double    * : \
+                        (name.con_val.long_double_con_val ?\
+                           (*name.con_val.long_double_con_val ?\
+                              (*name.con_val.long_double_con_val)     (*((long double*) name.val_ptr))\
+                           :\
+                              1\
+                           )\
+                        :\
+                           1\
+                        ),\
+                     default :\
+                         sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+                        +sfd_force_exit()\
+                     )\
+                  ?\
+                     0\
+                  :\
+                      sfd_printf("Constraint on variable pointed to failed : file : %s, line : %d\n", __FILE__, __LINE__)\
+                     +sfd_printf("  Constraint in effect  : %s\n", *name.con_val_in_effect)\
+                     +sfd_printf("  Constraint expression : %s\n", *name.con_val_expr)\
+                     +sfd_force_exit()\
+                  )\
+                  +\
+                  (*name.var_flags |= SFD_FL_INITD)\
+               :\
+                  0\
+               )\
+            :\
+                sfd_printf("sfd : Uninitialised incre : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+            )\
+         :\
+             sfd_printf("Write to variable pointed to not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+            +sfd_force_exit()\
+         )\
+      :\
+         _Generic(name##_sfd_ptr,\
+            signed char    * : *((signed char*)    name.val_ptr) += (signed char)    in_val,\
+            unsigned char  * : *((unsigned char*)  name.val_ptr) += (unsigned char)  in_val,\
+            char           * : *((char*)           name.val_ptr) += (char)           in_val,\
+            short          * : *((short*)          name.val_ptr) += (short)          in_val,\
+            unsigned short * : *((unsigned short*) name.val_ptr) += (unsigned short) in_val,\
+            int            * : *((int*)            name.val_ptr) += (int)            in_val,\
+            unsigned int   * : *((unsigned int*)   name.val_ptr) += (unsigned int)   in_val,\
+            long           * : *((long*)           name.val_ptr) += (long)           in_val,\
+            unsigned long  * : *((unsigned long*)  name.val_ptr) += (unsigned long)  in_val,\
+            long long      * : *((long long*)      name.val_ptr) += (long long)      in_val,\
+            unsigned long long * : *((unsigned long long*) name.val_ptr) += (unsigned long long) in_val,\
+            float          * : *((float*)          name.val_ptr) += (float)          in_val,\
+            double         * : *((double*)         name.val_ptr) += (double)         in_val,\
+            long double    * : *((long double*)    name.val_ptr) += (long double)    in_val,\
+            default :\
+                sfd_printf("Unexpected type : file : %s, line : %d\n", __FILE__, __LINE__)\
+               +sfd_force_exit()\
+         )\
+      )\
+   :\
+       sfd_printf("Read from pointer not permitted : file : %s, line : %d\n", __FILE__, __LINE__)\
+      +sfd_force_exit()\
+   )\
+   )
 
 #endif
 
